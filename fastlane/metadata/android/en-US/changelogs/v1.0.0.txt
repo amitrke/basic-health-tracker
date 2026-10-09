@@ -1,0 +1,1 @@
+First test build: log what you eat each day, with meals and calories. Everything stays on your phone.
