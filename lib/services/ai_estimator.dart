@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
+import 'ai_settings.dart';
+
 class EstimatedItem {
   const EstimatedItem({required this.name, required this.calories});
 
@@ -28,13 +30,13 @@ class AiEstimateException implements Exception {
   String toString() => message;
 }
 
-/// Estimates calories from a description and/or photo using the Claude API,
-/// called directly with the user's own API key.
-class AiEstimator {
-  AiEstimator({required this.apiKey, required this._client});
+typedef _Request = ({Uri uri, Map<String, String> headers, String body});
 
-  static const model = 'claude-haiku-5-5';
-  static final _endpoint = Uri.https('api.anthropic.com', '/v1/messages');
+/// Estimates calories from a description and/or photo, calling the user's
+/// chosen provider directly with their own key. Anthropic uses its Messages
+/// API; OpenRouter and custom endpoints use the OpenAI-compatible chat API.
+class AiEstimator {
+  AiEstimator({required this.config, required this._client});
 
   static const _system =
       'You estimate calories for food logging. Given a description and/or '
@@ -43,8 +45,10 @@ class AiEstimator {
       'serving if unspecified). Respond with only JSON, no prose, in this '
       'shape: {"items":[{"name":"short food name","calories":123}]}';
 
-  final String apiKey;
+  final AiConfig config;
   final http.Client _client;
+
+  bool get _isAnthropic => config.provider == AiProvider.anthropic;
 
   Future<AiEstimate> estimate({
     String? description,
@@ -55,66 +59,138 @@ class AiEstimator {
     if (text.isEmpty && imageBytes == null) {
       throw const AiEstimateException('Describe the food or add a photo.');
     }
-    final content = <Map<String, dynamic>>[
-      if (imageBytes != null)
-        {
-          'type': 'image',
-          'source': {
-            'type': 'base64',
-            'media_type': imageMediaType,
-            'data': base64Encode(imageBytes),
-          },
-        },
-      {
-        'type': 'text',
-        'text': text.isEmpty ? 'Estimate the calories in this meal.' : text,
-      },
-    ];
+    final prompt = text.isEmpty ? 'Estimate the calories in this meal.' : text;
+    final image = imageBytes == null ? null : base64Encode(imageBytes);
+
+    final request = _isAnthropic
+        ? _anthropicRequest(prompt, image, imageMediaType)
+        : _openAiRequest(prompt, image, imageMediaType);
 
     final http.Response response;
     try {
       response = await _client
-          .post(
-            _endpoint,
-            headers: {
-              'x-api-key': apiKey,
-              'anthropic-version': '2023-06-01',
-              'content-type': 'application/json',
-            },
-            body: jsonEncode({
-              'model': model,
-              'max_tokens': 512,
-              'system': _system,
-              'messages': [
-                {'role': 'user', 'content': content},
-              ],
-            }),
-          )
-          .timeout(const Duration(seconds: 30));
+          .post(request.uri, headers: request.headers, body: request.body)
+          .timeout(const Duration(seconds: 60));
     } on Exception {
       throw const AiEstimateException(
-        'Could not reach the estimator. Check your connection.',
+        'Could not reach the estimator. Check your connection and settings.',
       );
     }
 
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      throw const AiEstimateException(
-        'The API key was rejected. Check it in Settings.',
-      );
+    switch (response.statusCode) {
+      case 200:
+        break;
+      case 401 || 403:
+        throw const AiEstimateException(
+          'The API key was rejected. Check it in Settings.',
+        );
+      case 402:
+        throw const AiEstimateException(
+          'The provider says this account is out of credit.',
+        );
+      case 429:
+        throw const AiEstimateException(
+          'Rate limited. Wait a moment and try again (free models are '
+          'limited).',
+        );
+      default:
+        throw AiEstimateException(
+          'Estimator error (${response.statusCode}). Check the model name '
+          'in Settings, or try again.',
+        );
     }
-    if (response.statusCode != 200) {
-      throw AiEstimateException(
-        'Estimator error (${response.statusCode}). Try again.',
-      );
+
+    final String reply;
+    try {
+      reply = _isAnthropic
+          ? _anthropicReply(response.body)
+          : _openAiReply(response.body);
+    } catch (_) {
+      throw const AiEstimateException('Could not read the estimator reply.');
     }
-    final body = jsonDecode(response.body) as Map<String, dynamic>;
-    final blocks = (body['content'] as List?) ?? const [];
-    final reply = blocks
+    return parseEstimate(reply);
+  }
+
+  _Request _anthropicRequest(String prompt, String? image, String mediaType) {
+    return (
+      uri: Uri.parse('${config.baseUrl}/v1/messages'),
+      headers: {
+        'x-api-key': config.apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': config.model,
+        'max_tokens': 512,
+        'system': _system,
+        'messages': [
+          {
+            'role': 'user',
+            'content': [
+              if (image != null)
+                {
+                  'type': 'image',
+                  'source': {
+                    'type': 'base64',
+                    'media_type': mediaType,
+                    'data': image,
+                  },
+                },
+              {'type': 'text', 'text': prompt},
+            ],
+          },
+        ],
+      }),
+    );
+  }
+
+  _Request _openAiRequest(String prompt, String? image, String mediaType) {
+    final key = config.apiKey.trim();
+    return (
+      uri: Uri.parse('${config.baseUrl}/chat/completions'),
+      headers: {
+        if (key.isNotEmpty) 'Authorization': 'Bearer $key',
+        'content-type': 'application/json',
+        if (config.provider == AiProvider.openRouter) 'X-Title': 'Wellbite',
+      },
+      body: jsonEncode({
+        'model': config.model,
+        'max_tokens': 512,
+        'messages': [
+          {'role': 'system', 'content': _system},
+          {
+            'role': 'user',
+            'content': [
+              {'type': 'text', 'text': prompt},
+              if (image != null)
+                {
+                  'type': 'image_url',
+                  'image_url': {'url': 'data:$mediaType;base64,$image'},
+                },
+            ],
+          },
+        ],
+      }),
+    );
+  }
+
+  static String _anthropicReply(String body) {
+    final blocks = (jsonDecode(body)['content'] as List?) ?? const [];
+    return blocks
         .whereType<Map>()
         .where((b) => b['type'] == 'text')
         .map((b) => b['text'] as String)
         .join();
-    return parseEstimate(reply);
+  }
+
+  static String _openAiReply(String body) {
+    final content = jsonDecode(body)['choices'][0]['message']['content'];
+    if (content is String) return content;
+    // Some providers return a list of typed parts.
+    return (content as List)
+        .whereType<Map>()
+        .map((p) => (p['text'] as String?) ?? '')
+        .join();
   }
 
   /// Pulls the JSON object out of [reply], tolerating stray prose or fences.

@@ -161,7 +161,7 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.key),
-                  title: const Text('Add an API key to use AI estimates'),
+                  title: const Text('Set up an AI provider to use estimates'),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _openSettings,
                 ),

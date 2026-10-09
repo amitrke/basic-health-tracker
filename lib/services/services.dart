@@ -2,59 +2,67 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
 import 'ai_estimator.dart';
+import 'ai_settings.dart';
 import 'open_food_facts.dart';
 
-/// Where the user's Anthropic API key lives. Kept in the platform keystore.
-abstract class ApiKeyStore {
-  Future<String?> read();
-  Future<void> write(String key);
-  Future<void> clear();
+/// Where the AI provider settings (including API keys) live.
+abstract class AiSettingsStore {
+  Future<AiSettings> read();
+  Future<void> write(AiSettings settings);
 }
 
-class SecureApiKeyStore implements ApiKeyStore {
+/// Keeps settings in the platform keystore.
+class SecureAiSettingsStore implements AiSettingsStore {
   static const _storage = FlutterSecureStorage();
-  static const _name = 'anthropic_api_key';
+  static const _name = 'ai_settings';
+  static const _legacyAnthropicKey = 'anthropic_api_key';
 
   @override
-  Future<String?> read() => _storage.read(key: _name);
+  Future<AiSettings> read() async {
+    final stored = await _storage.read(key: _name);
+    if (stored != null) return AiSettings.decode(stored);
+    // Builds before multi-provider support saved only an Anthropic key.
+    final legacy = await _storage.read(key: _legacyAnthropicKey);
+    if (legacy != null && legacy.isNotEmpty) {
+      return const AiSettings().withConfig(
+        AiConfig(provider: AiProvider.anthropic, apiKey: legacy),
+      );
+    }
+    return const AiSettings();
+  }
 
   @override
-  Future<void> write(String key) => _storage.write(key: _name, value: key);
-
-  @override
-  Future<void> clear() => _storage.delete(key: _name);
+  Future<void> write(AiSettings settings) =>
+      _storage.write(key: _name, value: settings.encode());
 }
 
-class MemoryApiKeyStore implements ApiKeyStore {
-  MemoryApiKeyStore([this._key]);
+class MemoryAiSettingsStore implements AiSettingsStore {
+  MemoryAiSettingsStore([this._settings = const AiSettings()]);
 
-  String? _key;
-
-  @override
-  Future<String?> read() async => _key;
+  AiSettings _settings;
 
   @override
-  Future<void> write(String key) async => _key = key;
+  Future<AiSettings> read() async => _settings;
 
   @override
-  Future<void> clear() async => _key = null;
+  Future<void> write(AiSettings settings) async => _settings = settings;
 }
 
 /// Network-backed helpers shared by the screens.
 class AppServices {
-  AppServices({ApiKeyStore? keyStore, http.Client? client})
-    : keyStore = keyStore ?? SecureApiKeyStore(),
+  AppServices({AiSettingsStore? settingsStore, http.Client? client})
+    : settingsStore = settingsStore ?? SecureAiSettingsStore(),
       client = client ?? http.Client();
 
-  final ApiKeyStore keyStore;
+  final AiSettingsStore settingsStore;
   final http.Client client;
 
   OpenFoodFacts get openFoodFacts => OpenFoodFacts(client);
 
-  /// Null when no API key has been saved yet.
+  /// Null until the active provider has enough saved to make a request.
   Future<AiEstimator?> aiEstimator() async {
-    final key = (await keyStore.read())?.trim();
-    if (key == null || key.isEmpty) return null;
-    return AiEstimator(apiKey: key, client: client);
+    final config = (await settingsStore.read()).activeConfig;
+    if (!config.isUsable) return null;
+    return AiEstimator(config: config, client: client);
   }
 }

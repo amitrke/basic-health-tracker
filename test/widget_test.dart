@@ -59,7 +59,7 @@ void main() {
     await tester.pumpWidget(
       BasicHealthTrackerApp(
         database: db,
-        services: AppServices(keyStore: MemoryApiKeyStore()),
+        services: AppServices(settingsStore: MemoryAiSettingsStore()),
       ),
     );
     // Drift runs queries on real async I/O, which the fake clock won't advance.
@@ -85,7 +85,7 @@ void main() {
         baseCalories: 300,
       ),
     );
-    final services = AppServices(keyStore: MemoryApiKeyStore());
+    final services = AppServices(settingsStore: MemoryAiSettingsStore());
     await tester.pumpWidget(
       BasicHealthTrackerApp(database: db, services: services),
     );

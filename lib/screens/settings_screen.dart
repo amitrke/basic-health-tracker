@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/ai_settings.dart';
 import '../services/services.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -13,17 +14,41 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final _key = TextEditingController();
-  bool _hasKey = false;
+  final _model = TextEditingController();
+  final _baseUrl = TextEditingController();
+  AiSettings _settings = const AiSettings();
+  AiProvider _provider = AiProvider.anthropic;
   bool _loaded = false;
+  String? _error;
+
+  AiConfig get _saved => _settings.configFor(_provider);
+  bool get _hasKey => _saved.apiKey.isNotEmpty;
+
+  static const _help = {
+    AiProvider.anthropic:
+        'Claude models. Get a key at console.anthropic.com. Requests are '
+        'billed to your Anthropic account.',
+    AiProvider.openRouter:
+        'One key for many models. Get one at openrouter.ai/keys. The default '
+        'model, openrouter/free, picks a free model that can read photos. '
+        'Free models are rate limited, and free providers may log what you '
+        'send, so keep it to food. You can also enter any OpenRouter model id.',
+    AiProvider.custom:
+        'Any OpenAI-compatible endpoint, such as OpenAI, Ollama or LM Studio. '
+        'The base URL looks like https://api.openai.com/v1. The key is '
+        'optional for a local server. Use a model that accepts images if you '
+        'want photo estimates.',
+  };
 
   @override
   void initState() {
     super.initState();
-    widget.services.keyStore.read().then((k) {
+    widget.services.settingsStore.read().then((s) {
       if (!mounted) return;
       setState(() {
-        _hasKey = k != null && k.isNotEmpty;
+        _settings = s;
         _loaded = true;
+        _select(s.active);
       });
     });
   }
@@ -31,66 +56,152 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     _key.dispose();
+    _model.dispose();
+    _baseUrl.dispose();
     super.dispose();
   }
 
-  Future<void> _save() async {
-    final value = _key.text.trim();
-    if (value.isEmpty) return;
-    await widget.services.keyStore.write(value);
-    if (!mounted) return;
+  /// Shows [provider]'s saved details in the form. The key is never echoed.
+  void _select(AiProvider provider) {
+    _provider = provider;
+    final config = _settings.configFor(provider);
+    _model.text = config.model;
+    _baseUrl.text = provider.hasEditableBaseUrl ? config.baseUrl : '';
     _key.clear();
-    setState(() => _hasKey = true);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('API key saved')));
+    _error = null;
   }
 
-  Future<void> _remove() async {
-    await widget.services.keyStore.clear();
-    if (mounted) setState(() => _hasKey = false);
+  Future<void> _save() async {
+    final typedKey = _key.text.trim();
+    final config = AiConfig(
+      provider: _provider,
+      apiKey: typedKey.isNotEmpty ? typedKey : _saved.apiKey,
+      model: _model.text,
+      baseUrl: _provider.hasEditableBaseUrl ? _baseUrl.text : null,
+    );
+    if (!config.isUsable) {
+      setState(() {
+        _error = switch (_provider) {
+          AiProvider.custom => 'Enter a base URL and model name.',
+          _ => 'Enter an API key.',
+        };
+      });
+      return;
+    }
+    final updated = _settings.withConfig(config);
+    await widget.services.settingsStore.write(updated);
+    if (!mounted) return;
+    setState(() {
+      _settings = updated;
+      _key.clear();
+      _error = null;
+    });
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(content: Text('${_provider.label} saved and in use')),
+      );
+  }
+
+  Future<void> _removeKey() async {
+    final updated = _settings.withoutKey(_provider);
+    await widget.services.settingsStore.write(updated);
+    if (mounted) setState(() => _settings = updated);
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final inUse =
+        _settings.active == _provider && _settings.activeConfig.isUsable;
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text(
-            'AI calorie estimates',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('AI calorie estimates', style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           const Text(
-            'Describe a meal or snap a photo and Claude estimates the '
-            'calories. Add your own Anthropic API key to turn it on. The key '
-            'stays in this device\'s secure storage and is only sent to '
-            'Anthropic. Each estimate uses your account.',
+            'Describe a meal or snap a photo and an AI model estimates the '
+            'calories. Pick a provider and add your own key. Keys stay in '
+            'this device\'s secure storage and are only sent to the provider.',
           ),
           const SizedBox(height: 16),
-          if (_loaded && _hasKey)
+          SegmentedButton<AiProvider>(
+            segments: [
+              for (final p in AiProvider.values)
+                ButtonSegment(value: p, label: Text(p.label)),
+            ],
+            selected: {_provider},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => setState(() => _select(s.first)),
+          ),
+          const SizedBox(height: 8),
+          Text(_help[_provider]!, style: theme.textTheme.bodySmall),
+          const SizedBox(height: 16),
+          if (_loaded && inUse)
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.check_circle_outline),
+              title: Text('${_provider.label} is in use'),
+            ),
+          if (_loaded && _hasKey)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.key),
               title: const Text('API key saved'),
               trailing: TextButton(
-                onPressed: _remove,
+                onPressed: _removeKey,
                 child: const Text('Remove'),
               ),
             ),
+          if (_provider.hasEditableBaseUrl) ...[
+            TextField(
+              controller: _baseUrl,
+              keyboardType: TextInputType.url,
+              autocorrect: false,
+              decoration: const InputDecoration(
+                labelText: 'Base URL',
+                hintText: 'https://api.openai.com/v1',
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          TextField(
+            controller: _model,
+            autocorrect: false,
+            enableSuggestions: false,
+            decoration: InputDecoration(
+              labelText: 'Model',
+              hintText: _provider.defaultModel.isEmpty
+                  ? 'e.g. gpt-4o-mini'
+                  : _provider.defaultModel,
+            ),
+          ),
+          const SizedBox(height: 12),
           TextField(
             controller: _key,
             obscureText: true,
             autocorrect: false,
             enableSuggestions: false,
             decoration: InputDecoration(
-              labelText: _hasKey ? 'Replace API key' : 'Anthropic API key',
+              labelText: _hasKey
+                  ? 'Replace API key'
+                  : _provider.requiresKey
+                  ? 'API key'
+                  : 'API key (optional)',
             ),
             onSubmitted: (_) => _save(),
           ),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: _save, child: const Text('Save key')),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: TextStyle(color: theme.colorScheme.error)),
+          ],
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: _save,
+            child: Text('Save and use ${_provider.label}'),
+          ),
         ],
       ),
     );

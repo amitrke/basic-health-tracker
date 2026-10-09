@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +9,7 @@ import 'package:http/testing.dart';
 import 'package:wellbite/data/calories.dart';
 import 'package:wellbite/data/database.dart';
 import 'package:wellbite/services/ai_estimator.dart';
+import 'package:wellbite/services/ai_settings.dart';
 import 'package:wellbite/services/open_food_facts.dart';
 
 void main() {
@@ -228,45 +230,130 @@ void main() {
   });
 
   group('AiEstimator', () {
-    AiEstimator estimator(http.Client c) => AiEstimator(apiKey: 'k', client: c);
+    AiEstimator estimator(AiConfig config, http.Client c) =>
+        AiEstimator(config: config, client: c);
 
-    test('sends key, model and text; parses fenced JSON', () async {
+    const anthropic = AiConfig(provider: AiProvider.anthropic, apiKey: 'k');
+    const openRouter = AiConfig(provider: AiProvider.openRouter, apiKey: 'or');
+
+    const eggsJson =
+        '{"items":[{"name":"Eggs","calories":140},'
+        '{"name":"Toast","calories":90.4}]}';
+
+    test('anthropic: sends key, model, text; parses fenced JSON', () async {
       late http.Request seen;
       final client = MockClient((req) async {
         seen = req;
         return http.Response(
           jsonEncode({
             'content': [
+              {'type': 'text', 'text': 'Here:\n```json\n$eggsJson\n```'},
+            ],
+          }),
+          200,
+        );
+      });
+      final result = await estimator(
+        anthropic,
+        client,
+      ).estimate(description: '2 eggs');
+      expect(seen.url.toString(), 'https://api.anthropic.com/v1/messages');
+      expect(seen.headers['x-api-key'], 'k');
+      final body = jsonDecode(seen.body) as Map<String, dynamic>;
+      expect(body['model'], 'claude-haiku-5-5');
+      expect(result.totalCalories, 230);
+      expect(result.summary, 'Eggs, Toast');
+    });
+
+    test('openrouter: bearer auth, free model, image as data URL', () async {
+      late http.Request seen;
+      final client = MockClient((req) async {
+        seen = req;
+        return http.Response(
+          jsonEncode({
+            'choices': [
               {
-                'type': 'text',
-                'text':
-                    'Here:\n```json\n{"items":[{"name":"Eggs","calories":140},'
-                    '{"name":"Toast","calories":90.4}]}\n```',
+                'message': {'content': eggsJson},
               },
             ],
           }),
           200,
         );
       });
-      final result = await estimator(client).estimate(description: '2 eggs');
-      expect(seen.headers['x-api-key'], 'k');
+      final result = await estimator(openRouter, client).estimate(
+        description: 'breakfast',
+        imageBytes: Uint8List.fromList([1, 2, 3]),
+      );
+      expect(
+        seen.url.toString(),
+        'https://openrouter.ai/api/v1/chat/completions',
+      );
+      expect(seen.headers['Authorization'], 'Bearer or');
       final body = jsonDecode(seen.body) as Map<String, dynamic>;
-      expect(body['model'], AiEstimator.model);
+      expect(body['model'], 'openrouter/free');
+      final parts = (body['messages'][1]['content'] as List);
+      expect(
+        parts.last['image_url']['url'],
+        startsWith('data:image/jpeg;base64,'),
+      );
       expect(result.totalCalories, 230);
-      expect(result.summary, 'Eggs, Toast');
     });
 
-    test('bad key surfaces a friendly error', () async {
-      final client = MockClient((_) async => http.Response('{}', 401));
-      expect(
-        estimator(client).estimate(description: 'x'),
-        throwsA(isA<AiEstimateException>()),
+    test('custom endpoint: own base URL, no key header when blank', () async {
+      late http.Request seen;
+      final client = MockClient((req) async {
+        seen = req;
+        return http.Response(
+          jsonEncode({
+            'choices': [
+              {
+                'message': {
+                  'content': [
+                    {'type': 'text', 'text': eggsJson},
+                  ],
+                },
+              },
+            ],
+          }),
+          200,
+        );
+      });
+      const custom = AiConfig(
+        provider: AiProvider.custom,
+        model: 'llava',
+        baseUrl: 'http://192.168.1.5:11434/v1/',
       );
+      await estimator(custom, client).estimate(description: 'x');
+      expect(
+        seen.url.toString(),
+        'http://192.168.1.5:11434/v1/chat/completions',
+      );
+      expect(seen.headers.containsKey('Authorization'), isFalse);
+    });
+
+    test('errors map to friendly messages', () async {
+      Future<String> messageFor(int status) async {
+        final client = MockClient((_) async => http.Response('{}', status));
+        try {
+          await estimator(openRouter, client).estimate(description: 'x');
+        } on AiEstimateException catch (e) {
+          return e.message;
+        }
+        fail('expected an exception');
+      }
+
+      expect(await messageFor(401), contains('key was rejected'));
+      expect(await messageFor(429), contains('Rate limited'));
+      expect(await messageFor(402), contains('credit'));
+      expect(await messageFor(500), contains('model name'));
     });
 
     test('rejects an empty request without calling the API', () async {
       final client = MockClient((_) async => fail('should not be called'));
-      expect(estimator(client).estimate(), throwsA(isA<AiEstimateException>()));
+      expect(
+        estimator(anthropic, client).estimate(),
+        throwsA(isA<AiEstimateException>()),
+      );
     });
 
     test('garbage reply is an error, not a crash', () {
@@ -278,6 +365,44 @@ void main() {
         () => AiEstimator.parseEstimate('{"items":[]}'),
         throwsA(isA<AiEstimateException>()),
       );
+    });
+  });
+
+  group('AiSettings', () {
+    test('round-trips and keeps each provider separate', () {
+      const s = AiSettings();
+      final updated = s
+          .withConfig(
+            const AiConfig(provider: AiProvider.anthropic, apiKey: 'a'),
+          )
+          .withConfig(
+            const AiConfig(provider: AiProvider.openRouter, apiKey: 'o'),
+          );
+      final back = AiSettings.decode(updated.encode());
+      expect(back.active, AiProvider.openRouter);
+      expect(back.configFor(AiProvider.anthropic).apiKey, 'a');
+      expect(back.activeConfig.model, 'openrouter/free');
+      expect(
+        back.withoutKey(AiProvider.openRouter).activeConfig.isUsable,
+        isFalse,
+      );
+      expect(back.configFor(AiProvider.anthropic).isUsable, isTrue);
+    });
+
+    test('custom needs a URL and model but not a key', () {
+      expect(const AiConfig(provider: AiProvider.custom).isUsable, isFalse);
+      expect(
+        const AiConfig(
+          provider: AiProvider.custom,
+          model: 'm',
+          baseUrl: 'http://x/v1',
+        ).isUsable,
+        isTrue,
+      );
+    });
+
+    test('corrupt stored data falls back to defaults', () {
+      expect(AiSettings.decode('not json').active, AiProvider.anthropic);
     });
   });
 }
