@@ -2,8 +2,8 @@ name: Release to testers
 
 # Builds a signed App Bundle and pushes it to the Play Console internal testing
 # track, and a signed IPA to TestFlight. One-time setup (upload key, service
-# account, App Store Connect API key, the first manual upload each store
-# insists on) is in docs/RELEASING.md.
+# account, App Store Connect API key, the first rollout in Play Console) is in
+# docs/RELEASING.md.
 #
 # Adapted from relay-player's workflow of the same name. One workflow for both
 # stores so that github.run_number is the build number on both: Play's
@@ -17,8 +17,9 @@ on:
       status:
         description: >-
           Play release status. "completed" rolls out to internal testers at
-          once; "draft" leaves it in Play Console to roll out by hand. Play
-          refuses anything but draft while the app itself is still a draft.
+          once; "draft" leaves it in Play Console to roll out by hand. In
+          relay-player, Play refused anything but draft while the app itself
+          was still a draft (docs/RELEASING.md, step 6).
         type: choice
         options: [completed, draft]
         default: draft
@@ -171,8 +172,8 @@ jobs:
 
       # build.gradle.kts falls back to the debug key when key.properties is
       # missing, which would turn a broken secret into a bundle Play rejects
-      # only after the upload (or a debug certificate registered as the upload
-      # key on the first manual upload).
+      # only after the upload (or, on a first upload, a debug certificate
+      # registered with Play as the upload key).
       - name: Refuse a debug-signed bundle
         run: |
           aab=build/app/outputs/bundle/release/app-release.aab
@@ -186,9 +187,9 @@ jobs:
           grep -E 'SHA256:' <<< "$cert"
           echo "versionCode ${{ needs.check.outputs.code }}, $(du -h "$aab" | cut -f1)"
 
-      # Kept whether or not the upload runs. Play's API cannot create an app's
-      # first release, so the very first bundle is downloaded from here and
-      # uploaded in Play Console by hand.
+      # Kept whether or not the upload runs, so a failed upload does not cost
+      # the build: download it from here and upload it in Play Console by
+      # hand. (Not needed for a first release: the API created this app's.)
       - uses: actions/upload-artifact@v4
         with:
           name: android-aab-${{ needs.check.outputs.code }}
@@ -214,8 +215,8 @@ jobs:
         if: env.HAS_PLAY_CREDENTIALS != 'true'
         run: >-
           echo "::notice::PLAY_SERVICE_ACCOUNT_JSON is not set, so the bundle
-          was built and kept as an artifact but not uploaded. Expected before
-          the first manual upload; see docs/RELEASING.md."
+          was built and kept as an artifact but not uploaded. See
+          docs/RELEASING.md for the service account setup."
 
       - name: Remove the upload key
         if: always()

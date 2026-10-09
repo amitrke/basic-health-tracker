@@ -46,18 +46,30 @@ Identifiers for both stores: `com.subnext.wellbite`, Apple team `BTSKP77HML`.
    Repository **variable** `ANDROID_UPLOAD_KEY_ALIAS` = `upload`. It is a
    variable because GitHub masks a secret's value everywhere in the logs, and a
    secret alias of "upload" turns every log line containing that word into `***`.
-3. **First upload by hand.** Play's API cannot create an app's first release.
-   Run the workflow once, download the `android-aab-N` artifact, and upload it
-   to Internal testing in Play Console (opt in to Play App Signing). Add
-   testers under Testing → Internal testing → Testers.
-4. **Service account for CI.** A Google Cloud service account with the Play
+3. **Service account for CI.** A Google Cloud service account with the Play
    Android Developer API enabled, invited in Play Console → Users and
-   permissions with release rights **for this app**. The relay-player service
-   account can be reused: grant it access to this app too. Store its JSON key
-   as secret `PLAY_SERVICE_ACCOUNT_JSON`.
-5. While the Play app is still a draft, run with `status: draft`
-   (the default for manual runs here); Play rejects other statuses until the
-   app has had a first release.
+   permissions with release rights **for this app** (access is granted per
+   app: the first run failed with "The caller does not have permission" until
+   that was done). The relay-player service account can be reused. Store its
+   JSON key as secret `PLAY_SERVICE_ACCOUNT_JSON`.
+4. **First release needs no manual upload.** With the secrets above, a manual
+   run (`platforms: android`, `status: draft`) created the app's first release
+   as a draft on the Internal testing track (verified 2026-10-09, build
+   `1.0.0 (2)`). An earlier version of this document said Play's API cannot do
+   that; that was carried over from relay-player's notes and did not hold
+   here. The upload by hand is only a fallback: the `android-aab-N` artifact
+   is kept for it.
+5. **Finish in Play Console.** A draft release does nothing until someone
+   rolls it out: Testing → Internal testing → Testers (create a list and add
+   Gmail addresses), then Edit release → Save → Roll out. Play App Signing is
+   opted into at that point.
+6. **Status for later runs.** Manual runs default to `status: draft`, which
+   leaves each build in Play Console to roll out by hand. `completed` rolls out
+   to internal testers at once. relay-player found that Play refuses anything
+   but draft while the app itself is still a draft; this repo has not yet tried
+   `completed` before a first rollout, and pushes to `develop` have no inputs,
+   so they use `completed`. Roll out the first release by hand (step 5) before
+   relying on those.
 
 ### iOS (TestFlight)
 
@@ -67,9 +79,12 @@ Identifiers for both stores: `com.subnext.wellbite`, Apple team `BTSKP77HML`.
    a new key under Users and Access → Integrations.
    - Secret `APP_STORE_CONNECT_API_KEY_P8`: the full contents of the `.p8`
    - Variables `APP_STORE_CONNECT_API_KEY_ID` and `APP_STORE_CONNECT_ISSUER_ID`
-2. **First build.** Upload the first build so the app's TestFlight page exists
-   (the CI upload can also do this once the key is set). Add internal testers in
-   App Store Connect → TestFlight.
+2. **First build needs no manual upload.** The CI upload alone delivered the
+   first build to App Store Connect (verified 2026-10-09, run 4). Add internal
+   testers in App Store Connect → TestFlight once the build finishes processing.
+   The Xcode project must have `DEVELOPMENT_TEAM` set on the Runner target
+   (`BTSKP77HML`): without it `flutter build ios --config-only` fails with "No
+   valid code signing certificates were found", which failed the first run.
 3. Signing is automatic and cloud-managed: no `.p12` or provisioning profile is
    stored. The archive is unsigned on purpose; signing happens at export.
    A signed archive would mint a new development certificate on every run.
