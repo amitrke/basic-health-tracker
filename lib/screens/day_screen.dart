@@ -1,13 +1,16 @@
-import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database.dart';
+import '../services/services.dart';
+import 'add_food_sheet.dart';
+import 'settings_screen.dart';
 
 class DayScreen extends StatefulWidget {
-  const DayScreen({super.key, required this.database});
+  const DayScreen({super.key, required this.database, required this.services});
 
   final AppDatabase database;
+  final AppServices services;
 
   @override
   State<DayScreen> createState() => _DayScreenState();
@@ -39,16 +42,67 @@ class _DayScreenState extends State<DayScreen> {
   }
 
   Future<void> _openEditor([FoodEntry? existing]) async {
-    await showModalBottomSheet<void>(
+    final messenger = ScaffoldMessenger.of(context);
+    final logged = await showModalBottomSheet<LoggedResult>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => _EntryEditor(
+      builder: (_) => AddFoodSheet(
         database: widget.database,
+        services: widget.services,
         day: _day,
         existing: existing,
       ),
     );
+    if (logged == null) return;
+    messenger
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Logged ${logged.label}'),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => widget.database.deleteEntries(logged.ids),
+          ),
+        ),
+      );
+  }
+
+  Future<void> _saveAsTemplate(MealType meal, List<FoodEntry> entries) async {
+    final controller = TextEditingController(text: 'Usual ${meal.name}');
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save as meal'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(labelText: 'Name'),
+          onSubmitted: (v) => Navigator.pop(ctx, v),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (name == null || name.trim().isEmpty) return;
+    await widget.database.saveTemplate(name, meal, entries);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(
+        SnackBar(
+          content: Text('Saved "${name.trim()}". Find it under Add food.'),
+        ),
+      );
   }
 
   @override
@@ -70,6 +124,15 @@ class _DayScreenState extends State<DayScreen> {
             tooltip: 'Next day',
             icon: const Icon(Icons.chevron_right),
             onPressed: _isToday ? null : () => _shift(1),
+          ),
+          IconButton(
+            tooltip: 'Settings',
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SettingsScreen(services: widget.services),
+              ),
+            ),
           ),
         ],
       ),
@@ -114,10 +177,21 @@ class _DayScreenState extends State<DayScreen> {
     if (entries.isEmpty) return const [];
     return [
       Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-        child: Text(
-          toBeginningOfSentenceCase(meal.name),
-          style: Theme.of(context).textTheme.titleSmall,
+        padding: const EdgeInsets.fromLTRB(16, 8, 4, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                toBeginningOfSentenceCase(meal.name),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+            ),
+            IconButton(
+              tooltip: 'Save ${meal.name} as a meal',
+              icon: const Icon(Icons.bookmark_add_outlined),
+              onPressed: () => _saveAsTemplate(meal, entries.toList()),
+            ),
+          ],
         ),
       ),
       for (final e in entries)
@@ -133,152 +207,23 @@ class _DayScreenState extends State<DayScreen> {
           onDismissed: (_) => widget.database.deleteEntry(e.id),
           child: ListTile(
             title: Text(e.name),
-            subtitle: e.notes == null || e.notes!.isEmpty
-                ? Text(DateFormat.jm().format(e.loggedAt))
-                : Text('${DateFormat.jm().format(e.loggedAt)} · ${e.notes}'),
-            trailing: e.calories == null ? null : Text('${e.calories} kcal'),
+            subtitle: Text(_subtitle(e)),
+            trailing: e.calories == null
+                ? null
+                : Text('${e.isEstimate ? '~' : ''}${e.calories} kcal'),
             onTap: () => _openEditor(e),
           ),
         ),
     ];
   }
-}
 
-class _EntryEditor extends StatefulWidget {
-  const _EntryEditor({
-    required this.database,
-    required this.day,
-    this.existing,
-  });
-
-  final AppDatabase database;
-  final DateTime day;
-  final FoodEntry? existing;
-
-  @override
-  State<_EntryEditor> createState() => _EntryEditorState();
-}
-
-class _EntryEditorState extends State<_EntryEditor> {
-  final _formKey = GlobalKey<FormState>();
-  late final _name = TextEditingController(text: widget.existing?.name);
-  late final _calories = TextEditingController(
-    text: widget.existing?.calories?.toString(),
-  );
-  late final _notes = TextEditingController(text: widget.existing?.notes);
-  late MealType _meal = widget.existing?.mealType ?? _guessMeal();
-
-  static MealType _guessMeal() {
-    final h = DateTime.now().hour;
-    if (h < 11) return MealType.breakfast;
-    if (h < 15) return MealType.lunch;
-    if (h < 21) return MealType.dinner;
-    return MealType.snack;
-  }
-
-  @override
-  void dispose() {
-    _name.dispose();
-    _calories.dispose();
-    _notes.dispose();
-    super.dispose();
-  }
-
-  Future<void> _save() async {
-    if (!_formKey.currentState!.validate()) return;
-    final calories = int.tryParse(_calories.text.trim());
-    final notes = _notes.text.trim().isEmpty ? null : _notes.text.trim();
-    final existing = widget.existing;
-    if (existing == null) {
-      final now = DateTime.now();
-      // Keep the time of day for today; for past days log at noon.
-      final isToday = DateUtils.isSameDay(widget.day, now);
-      final at = isToday
-          ? now
-          : DateTime(widget.day.year, widget.day.month, widget.day.day, 12);
-      await widget.database.addEntry(
-        FoodEntriesCompanion.insert(
-          name: _name.text.trim(),
-          mealType: _meal,
-          loggedAt: at,
-          calories: Value(calories),
-          notes: Value(notes),
-        ),
-      );
-    } else {
-      await widget.database.updateEntry(
-        existing.copyWith(
-          name: _name.text.trim(),
-          mealType: _meal,
-          calories: Value(calories),
-          notes: Value(notes),
-        ),
-      );
-    }
-    if (mounted) Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        16,
-        0,
-        16,
-        MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            TextFormField(
-              controller: _name,
-              autofocus: true,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(labelText: 'What did you eat?'),
-              validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter a food' : null,
-            ),
-            const SizedBox(height: 12),
-            SegmentedButton<MealType>(
-              segments: [
-                for (final m in MealType.values)
-                  ButtonSegment(
-                    value: m,
-                    label: Text(toBeginningOfSentenceCase(m.name)),
-                  ),
-              ],
-              selected: {_meal},
-              showSelectedIcon: false,
-              onSelectionChanged: (s) => setState(() => _meal = s.first),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _calories,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Calories (optional)',
-              ),
-              validator: (v) {
-                if (v == null || v.trim().isEmpty) return null;
-                final n = int.tryParse(v.trim());
-                return (n == null || n < 0 || n > 20000)
-                    ? 'Enter a valid number'
-                    : null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _notes,
-              decoration: const InputDecoration(labelText: 'Notes (optional)'),
-            ),
-            const SizedBox(height: 16),
-            FilledButton(onPressed: _save, child: const Text('Save')),
-          ],
-        ),
-      ),
-    );
+  static String _subtitle(FoodEntry e) {
+    final parts = [
+      DateFormat.jm().format(e.loggedAt),
+      if (e.portion != null && e.portion != Portion.normal)
+        toBeginningOfSentenceCase(e.portion!.name),
+      if (e.notes != null && e.notes!.isNotEmpty) e.notes!,
+    ];
+    return parts.join(' · ');
   }
 }

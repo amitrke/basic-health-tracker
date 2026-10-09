@@ -2,15 +2,23 @@ import 'package:flutter/material.dart';
 
 import 'data/database.dart';
 import 'screens/day_screen.dart';
+import 'services/services.dart';
 
 void main() {
-  runApp(BasicHealthTrackerApp(database: AppDatabase()));
+  runApp(
+    BasicHealthTrackerApp(database: AppDatabase(), services: AppServices()),
+  );
 }
 
 class BasicHealthTrackerApp extends StatelessWidget {
-  const BasicHealthTrackerApp({super.key, required this.database});
+  const BasicHealthTrackerApp({
+    super.key,
+    required this.database,
+    required this.services,
+  });
 
   final AppDatabase database;
+  final AppServices services;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +35,7 @@ class BasicHealthTrackerApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: DayScreen(database: database),
+      home: DayScreen(database: database, services: services),
     );
   }
 }
