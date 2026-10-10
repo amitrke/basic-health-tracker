@@ -6,6 +6,8 @@
 	<string>Wellbite uses the camera to scan food barcodes and photograph meals for calorie estimates.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Wellbite can read a meal photo you choose to estimate its calories.</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>Wellbite reads your calories burned, weight and height from Apple Health to show them next to what you eat. It never writes to Health.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

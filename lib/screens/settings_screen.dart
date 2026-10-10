@@ -1,6 +1,9 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 
 import '../services/ai_settings.dart';
+import '../services/health_service.dart';
 import '../services/services.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -20,6 +23,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AiProvider _provider = AiProvider.anthropic;
   bool _loaded = false;
   String? _error;
+  bool _healthOn = false;
+  bool _healthBusy = false;
+  String? _healthNote;
+  BodyStats _body = const BodyStats();
+
+  static String get _healthName =>
+      Platform.isIOS ? 'Apple Health' : 'Health Connect';
 
   AiConfig get _saved => _settings.configFor(_provider);
   bool get _hasKey => _saved.apiKey.isNotEmpty;
@@ -51,6 +61,55 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _select(s.active);
       });
     });
+    widget.services.healthPrefs.readEnabled().then((on) {
+      if (!mounted) return;
+      setState(() => _healthOn = on);
+      if (on) _loadBody();
+    });
+  }
+
+  Future<void> _loadBody() async {
+    final body = await widget.services.health.bodyStats();
+    if (mounted) setState(() => _body = body);
+  }
+
+  Future<void> _setHealth(bool on) async {
+    setState(() {
+      _healthBusy = true;
+      _healthNote = null;
+    });
+    final health = widget.services.health;
+    if (on) {
+      if (!await health.isAvailable()) {
+        if (!mounted) return;
+        setState(() {
+          _healthBusy = false;
+          _healthNote = Platform.isAndroid
+              ? 'Health Connect is not installed. Install it from Google Play '
+                    'and try again.'
+              : 'Health data is not available on this device.';
+        });
+        return;
+      }
+      if (!await health.requestAccess()) {
+        if (!mounted) return;
+        setState(() {
+          _healthBusy = false;
+          _healthNote =
+              'Access was not granted. You can allow it in $_healthName '
+              'settings.';
+        });
+        return;
+      }
+    }
+    await widget.services.healthPrefs.writeEnabled(on);
+    if (!mounted) return;
+    setState(() {
+      _healthOn = on;
+      _healthBusy = false;
+      _body = const BodyStats();
+    });
+    if (on) _loadBody();
   }
 
   @override
@@ -202,6 +261,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: _save,
             child: Text('Save and use ${_provider.label}'),
           ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 8),
+          Text(_healthName, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Text(
+            'Read calories burned, weight and height from $_healthName and '
+            'show them next to what you eat. Wellbite only reads, never '
+            'writes, and the data stays on this device.',
+          ),
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text('Use $_healthName data'),
+            value: _healthOn,
+            onChanged: _healthBusy ? null : _setHealth,
+          ),
+          if (_healthNote != null)
+            Text(
+              _healthNote!,
+              style: TextStyle(color: theme.colorScheme.error),
+            ),
+          if (_healthOn)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.monitor_weight_outlined),
+              title: Text(
+                _body.isEmpty
+                    ? 'No weight or height found'
+                    : [
+                        if (_body.weightKg != null)
+                          '${_body.weightKg!.toStringAsFixed(1)} kg',
+                        if (_body.heightCm != null)
+                          '${_body.heightCm!.round()} cm',
+                      ].join(' · '),
+              ),
+              subtitle: const Text('Latest values in Health'),
+            ),
         ],
       ),
     );
