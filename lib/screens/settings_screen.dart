@@ -1,11 +1,13 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/ai_settings.dart';
 import '../services/health_service.dart';
 import '../services/services.dart';
+import '../sync/sync_controller.dart';
 import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
@@ -381,6 +383,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
           ),
+          if (_services.sync != null) ...[
+            const _SectionLabel('Sync'),
+            _SyncCard(sync: _services.sync!),
+          ],
           const _SectionLabel('Food'),
           Card(
             child: Column(
@@ -413,6 +419,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Turns cloud sync on and off, and shows how the last attempt went.
+class _SyncCard extends StatelessWidget {
+  const _SyncCard({required this.sync});
+
+  final SyncController sync;
+
+  String _status() {
+    if (sync.syncing) return 'Syncing…';
+    if (sync.error != null) return sync.error!;
+    final at = sync.lastSynced;
+    if (at == null) return 'Not synced yet';
+    final now = DateTime.now();
+    final sameDay =
+        at.year == now.year && at.month == now.month && at.day == now.day;
+    return 'Last synced ${sameDay ? DateFormat.jm().format(at) : DateFormat.MMMd().add_jm().format(at)}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return ListenableBuilder(
+      listenable: sync,
+      builder: (context, _) {
+        final reason = sync.unavailableReason;
+        return Card(
+          child: Column(
+            children: [
+              SwitchListTile(
+                secondary: Icon(Icons.sync, color: p.accent),
+                title: const Text('Sync between devices'),
+                subtitle: Text(
+                  reason ??
+                      (sync.enabled
+                          ? 'Using ${sync.label}'
+                          : 'Keep your log on every device with ${sync.label}'),
+                ),
+                value: sync.enabled,
+                onChanged: reason != null || sync.syncing
+                    ? null
+                    : (on) => on ? sync.enable() : sync.disable(),
+              ),
+              if (sync.enabled || sync.error != null) ...[
+                const Divider(indent: 16, endIndent: 16),
+                ListTile(
+                  title: Text(
+                    _status(),
+                    style: sync.error == null
+                        ? null
+                        : TextStyle(color: Theme.of(context).colorScheme.error),
+                  ),
+                  trailing: sync.enabled
+                      ? TextButton(
+                          onPressed: sync.syncing ? null : sync.syncNow,
+                          child: const Text('Sync now'),
+                        )
+                      : null,
+                ),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 }

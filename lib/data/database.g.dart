@@ -9,6 +9,28 @@ class $FoodEntriesTable extends FoodEntries
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $FoodEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newUuid,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -130,6 +152,8 @@ class $FoodEntriesTable extends FoodEntries
   );
   @override
   List<GeneratedColumn> get $columns => [
+    uuid,
+    updatedAt,
     id,
     name,
     mealType,
@@ -154,6 +178,18 @@ class $FoodEntriesTable extends FoodEntries
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -218,6 +254,14 @@ class $FoodEntriesTable extends FoodEntries
   FoodEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return FoodEntry(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -283,6 +327,8 @@ class $FoodEntriesTable extends FoodEntries
 }
 
 class FoodEntry extends DataClass implements Insertable<FoodEntry> {
+  final String uuid;
+  final DateTime updatedAt;
   final int id;
   final String name;
   final MealType mealType;
@@ -297,6 +343,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   final int? carbs;
   final int? fat;
   const FoodEntry({
+    required this.uuid,
+    required this.updatedAt,
     required this.id,
     required this.name,
     required this.mealType,
@@ -312,6 +360,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     {
@@ -346,6 +396,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
 
   FoodEntriesCompanion toCompanion(bool nullToAbsent) {
     return FoodEntriesCompanion(
+      uuid: Value(uuid),
+      updatedAt: Value(updatedAt),
       id: Value(id),
       name: Value(name),
       mealType: Value(mealType),
@@ -376,6 +428,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return FoodEntry(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       mealType: $FoodEntriesTable.$convertermealType.fromJson(
@@ -397,6 +451,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'mealType': serializer.toJson<int>(
@@ -416,6 +472,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   }
 
   FoodEntry copyWith({
+    String? uuid,
+    DateTime? updatedAt,
     int? id,
     String? name,
     MealType? mealType,
@@ -428,6 +486,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
     Value<int?> carbs = const Value.absent(),
     Value<int?> fat = const Value.absent(),
   }) => FoodEntry(
+    uuid: uuid ?? this.uuid,
+    updatedAt: updatedAt ?? this.updatedAt,
     id: id ?? this.id,
     name: name ?? this.name,
     mealType: mealType ?? this.mealType,
@@ -442,6 +502,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   );
   FoodEntry copyWithCompanion(FoodEntriesCompanion data) {
     return FoodEntry(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       mealType: data.mealType.present ? data.mealType.value : this.mealType,
@@ -461,6 +523,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   @override
   String toString() {
     return (StringBuffer('FoodEntry(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('mealType: $mealType, ')
@@ -478,6 +542,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
 
   @override
   int get hashCode => Object.hash(
+    uuid,
+    updatedAt,
     id,
     name,
     mealType,
@@ -494,6 +560,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is FoodEntry &&
+          other.uuid == this.uuid &&
+          other.updatedAt == this.updatedAt &&
           other.id == this.id &&
           other.name == this.name &&
           other.mealType == this.mealType &&
@@ -508,6 +576,8 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
 }
 
 class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
+  final Value<String> uuid;
+  final Value<DateTime> updatedAt;
   final Value<int> id;
   final Value<String> name;
   final Value<MealType> mealType;
@@ -520,6 +590,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
   final Value<int?> carbs;
   final Value<int?> fat;
   const FoodEntriesCompanion({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.mealType = const Value.absent(),
@@ -533,6 +605,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     this.fat = const Value.absent(),
   });
   FoodEntriesCompanion.insert({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     required String name,
     required MealType mealType,
@@ -548,6 +622,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
        mealType = Value(mealType),
        loggedAt = Value(loggedAt);
   static Insertable<FoodEntry> custom({
+    Expression<String>? uuid,
+    Expression<DateTime>? updatedAt,
     Expression<int>? id,
     Expression<String>? name,
     Expression<int>? mealType,
@@ -561,6 +637,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     Expression<int>? fat,
   }) {
     return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (mealType != null) 'meal_type': mealType,
@@ -576,6 +654,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
   }
 
   FoodEntriesCompanion copyWith({
+    Value<String>? uuid,
+    Value<DateTime>? updatedAt,
     Value<int>? id,
     Value<String>? name,
     Value<MealType>? mealType,
@@ -589,6 +669,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     Value<int?>? fat,
   }) {
     return FoodEntriesCompanion(
+      uuid: uuid ?? this.uuid,
+      updatedAt: updatedAt ?? this.updatedAt,
       id: id ?? this.id,
       name: name ?? this.name,
       mealType: mealType ?? this.mealType,
@@ -606,6 +688,12 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -649,6 +737,8 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
   @override
   String toString() {
     return (StringBuffer('FoodEntriesCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('mealType: $mealType, ')
@@ -671,6 +761,28 @@ class $SavedFoodsTable extends SavedFoods
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $SavedFoodsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newUuid,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -800,6 +912,8 @@ class $SavedFoodsTable extends SavedFoods
   );
   @override
   List<GeneratedColumn> get $columns => [
+    uuid,
+    updatedAt,
     id,
     name,
     calories,
@@ -824,6 +938,18 @@ class $SavedFoodsTable extends SavedFoods
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -906,6 +1032,14 @@ class $SavedFoodsTable extends SavedFoods
   SavedFood map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return SavedFood(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -960,6 +1094,8 @@ class $SavedFoodsTable extends SavedFoods
 }
 
 class SavedFood extends DataClass implements Insertable<SavedFood> {
+  final String uuid;
+  final DateTime updatedAt;
   final int id;
   final String name;
   final int? calories;
@@ -972,6 +1108,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   final int? carbs;
   final int? fat;
   const SavedFood({
+    required this.uuid,
+    required this.updatedAt,
     required this.id,
     required this.name,
     this.calories,
@@ -987,6 +1125,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || calories != null) {
@@ -1015,6 +1155,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
 
   SavedFoodsCompanion toCompanion(bool nullToAbsent) {
     return SavedFoodsCompanion(
+      uuid: Value(uuid),
+      updatedAt: Value(updatedAt),
       id: Value(id),
       name: Value(name),
       calories: calories == null && nullToAbsent
@@ -1045,6 +1187,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return SavedFood(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       calories: serializer.fromJson<int?>(json['calories']),
@@ -1062,6 +1206,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'calories': serializer.toJson<int?>(calories),
@@ -1077,6 +1223,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   }
 
   SavedFood copyWith({
+    String? uuid,
+    DateTime? updatedAt,
     int? id,
     String? name,
     Value<int?> calories = const Value.absent(),
@@ -1089,6 +1237,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
     Value<int?> carbs = const Value.absent(),
     Value<int?> fat = const Value.absent(),
   }) => SavedFood(
+    uuid: uuid ?? this.uuid,
+    updatedAt: updatedAt ?? this.updatedAt,
     id: id ?? this.id,
     name: name ?? this.name,
     calories: calories.present ? calories.value : this.calories,
@@ -1103,6 +1253,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   );
   SavedFood copyWithCompanion(SavedFoodsCompanion data) {
     return SavedFood(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       calories: data.calories.present ? data.calories.value : this.calories,
@@ -1126,6 +1278,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   @override
   String toString() {
     return (StringBuffer('SavedFood(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('calories: $calories, ')
@@ -1143,6 +1297,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
 
   @override
   int get hashCode => Object.hash(
+    uuid,
+    updatedAt,
     id,
     name,
     calories,
@@ -1159,6 +1315,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is SavedFood &&
+          other.uuid == this.uuid &&
+          other.updatedAt == this.updatedAt &&
           other.id == this.id &&
           other.name == this.name &&
           other.calories == this.calories &&
@@ -1173,6 +1331,8 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
 }
 
 class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
+  final Value<String> uuid;
+  final Value<DateTime> updatedAt;
   final Value<int> id;
   final Value<String> name;
   final Value<int?> calories;
@@ -1185,6 +1345,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
   final Value<int?> carbs;
   final Value<int?> fat;
   const SavedFoodsCompanion({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.calories = const Value.absent(),
@@ -1198,6 +1360,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     this.fat = const Value.absent(),
   });
   SavedFoodsCompanion.insert({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     required String name,
     this.calories = const Value.absent(),
@@ -1212,6 +1376,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
   }) : name = Value(name),
        lastUsedAt = Value(lastUsedAt);
   static Insertable<SavedFood> custom({
+    Expression<String>? uuid,
+    Expression<DateTime>? updatedAt,
     Expression<int>? id,
     Expression<String>? name,
     Expression<int>? calories,
@@ -1225,6 +1391,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     Expression<int>? fat,
   }) {
     return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (calories != null) 'calories': calories,
@@ -1240,6 +1408,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
   }
 
   SavedFoodsCompanion copyWith({
+    Value<String>? uuid,
+    Value<DateTime>? updatedAt,
     Value<int>? id,
     Value<String>? name,
     Value<int?>? calories,
@@ -1253,6 +1423,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     Value<int?>? fat,
   }) {
     return SavedFoodsCompanion(
+      uuid: uuid ?? this.uuid,
+      updatedAt: updatedAt ?? this.updatedAt,
       id: id ?? this.id,
       name: name ?? this.name,
       calories: calories ?? this.calories,
@@ -1270,6 +1442,12 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -1309,6 +1487,8 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
   @override
   String toString() {
     return (StringBuffer('SavedFoodsCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('calories: $calories, ')
@@ -1331,6 +1511,28 @@ class $MealTemplatesTable extends MealTemplates
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $MealTemplatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newUuid,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -1368,7 +1570,7 @@ class $MealTemplatesTable extends MealTemplates
         requiredDuringInsert: true,
       ).withConverter<MealType>($MealTemplatesTable.$convertermealType);
   @override
-  List<GeneratedColumn> get $columns => [id, name, mealType];
+  List<GeneratedColumn> get $columns => [uuid, updatedAt, id, name, mealType];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1381,6 +1583,18 @@ class $MealTemplatesTable extends MealTemplates
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -1401,6 +1615,14 @@ class $MealTemplatesTable extends MealTemplates
   MealTemplate map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return MealTemplate(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -1428,10 +1650,14 @@ class $MealTemplatesTable extends MealTemplates
 }
 
 class MealTemplate extends DataClass implements Insertable<MealTemplate> {
+  final String uuid;
+  final DateTime updatedAt;
   final int id;
   final String name;
   final MealType mealType;
   const MealTemplate({
+    required this.uuid,
+    required this.updatedAt,
     required this.id,
     required this.name,
     required this.mealType,
@@ -1439,6 +1665,8 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     map['id'] = Variable<int>(id);
     map['name'] = Variable<String>(name);
     {
@@ -1451,6 +1679,8 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
 
   MealTemplatesCompanion toCompanion(bool nullToAbsent) {
     return MealTemplatesCompanion(
+      uuid: Value(uuid),
+      updatedAt: Value(updatedAt),
       id: Value(id),
       name: Value(name),
       mealType: Value(mealType),
@@ -1463,6 +1693,8 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MealTemplate(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       id: serializer.fromJson<int>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       mealType: $MealTemplatesTable.$convertermealType.fromJson(
@@ -1474,6 +1706,8 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'id': serializer.toJson<int>(id),
       'name': serializer.toJson<String>(name),
       'mealType': serializer.toJson<int>(
@@ -1482,14 +1716,23 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
     };
   }
 
-  MealTemplate copyWith({int? id, String? name, MealType? mealType}) =>
-      MealTemplate(
-        id: id ?? this.id,
-        name: name ?? this.name,
-        mealType: mealType ?? this.mealType,
-      );
+  MealTemplate copyWith({
+    String? uuid,
+    DateTime? updatedAt,
+    int? id,
+    String? name,
+    MealType? mealType,
+  }) => MealTemplate(
+    uuid: uuid ?? this.uuid,
+    updatedAt: updatedAt ?? this.updatedAt,
+    id: id ?? this.id,
+    name: name ?? this.name,
+    mealType: mealType ?? this.mealType,
+  );
   MealTemplate copyWithCompanion(MealTemplatesCompanion data) {
     return MealTemplate(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
       mealType: data.mealType.present ? data.mealType.value : this.mealType,
@@ -1499,6 +1742,8 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
   @override
   String toString() {
     return (StringBuffer('MealTemplate(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('mealType: $mealType')
@@ -1507,37 +1752,49 @@ class MealTemplate extends DataClass implements Insertable<MealTemplate> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, mealType);
+  int get hashCode => Object.hash(uuid, updatedAt, id, name, mealType);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MealTemplate &&
+          other.uuid == this.uuid &&
+          other.updatedAt == this.updatedAt &&
           other.id == this.id &&
           other.name == this.name &&
           other.mealType == this.mealType);
 }
 
 class MealTemplatesCompanion extends UpdateCompanion<MealTemplate> {
+  final Value<String> uuid;
+  final Value<DateTime> updatedAt;
   final Value<int> id;
   final Value<String> name;
   final Value<MealType> mealType;
   const MealTemplatesCompanion({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.mealType = const Value.absent(),
   });
   MealTemplatesCompanion.insert({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     required String name,
     required MealType mealType,
   }) : name = Value(name),
        mealType = Value(mealType);
   static Insertable<MealTemplate> custom({
+    Expression<String>? uuid,
+    Expression<DateTime>? updatedAt,
     Expression<int>? id,
     Expression<String>? name,
     Expression<int>? mealType,
   }) {
     return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (mealType != null) 'meal_type': mealType,
@@ -1545,11 +1802,15 @@ class MealTemplatesCompanion extends UpdateCompanion<MealTemplate> {
   }
 
   MealTemplatesCompanion copyWith({
+    Value<String>? uuid,
+    Value<DateTime>? updatedAt,
     Value<int>? id,
     Value<String>? name,
     Value<MealType>? mealType,
   }) {
     return MealTemplatesCompanion(
+      uuid: uuid ?? this.uuid,
+      updatedAt: updatedAt ?? this.updatedAt,
       id: id ?? this.id,
       name: name ?? this.name,
       mealType: mealType ?? this.mealType,
@@ -1559,6 +1820,12 @@ class MealTemplatesCompanion extends UpdateCompanion<MealTemplate> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -1576,6 +1843,8 @@ class MealTemplatesCompanion extends UpdateCompanion<MealTemplate> {
   @override
   String toString() {
     return (StringBuffer('MealTemplatesCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('mealType: $mealType')
@@ -2042,6 +2311,28 @@ class $WeightEntriesTable extends WeightEntries
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $WeightEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    clientDefault: newUuid,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: DateTime.now,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<int> id = GeneratedColumn<int>(
@@ -2076,7 +2367,7 @@ class $WeightEntriesTable extends WeightEntries
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, measuredAt, kg];
+  List<GeneratedColumn> get $columns => [uuid, updatedAt, id, measuredAt, kg];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2089,6 +2380,18 @@ class $WeightEntriesTable extends WeightEntries
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -2114,6 +2417,14 @@ class $WeightEntriesTable extends WeightEntries
   WeightEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return WeightEntry(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
@@ -2136,10 +2447,14 @@ class $WeightEntriesTable extends WeightEntries
 }
 
 class WeightEntry extends DataClass implements Insertable<WeightEntry> {
+  final String uuid;
+  final DateTime updatedAt;
   final int id;
   final DateTime measuredAt;
   final double kg;
   const WeightEntry({
+    required this.uuid,
+    required this.updatedAt,
     required this.id,
     required this.measuredAt,
     required this.kg,
@@ -2147,6 +2462,8 @@ class WeightEntry extends DataClass implements Insertable<WeightEntry> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
     map['id'] = Variable<int>(id);
     map['measured_at'] = Variable<DateTime>(measuredAt);
     map['kg'] = Variable<double>(kg);
@@ -2155,6 +2472,8 @@ class WeightEntry extends DataClass implements Insertable<WeightEntry> {
 
   WeightEntriesCompanion toCompanion(bool nullToAbsent) {
     return WeightEntriesCompanion(
+      uuid: Value(uuid),
+      updatedAt: Value(updatedAt),
       id: Value(id),
       measuredAt: Value(measuredAt),
       kg: Value(kg),
@@ -2167,6 +2486,8 @@ class WeightEntry extends DataClass implements Insertable<WeightEntry> {
   }) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return WeightEntry(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       id: serializer.fromJson<int>(json['id']),
       measuredAt: serializer.fromJson<DateTime>(json['measuredAt']),
       kg: serializer.fromJson<double>(json['kg']),
@@ -2176,20 +2497,31 @@ class WeightEntry extends DataClass implements Insertable<WeightEntry> {
   Map<String, dynamic> toJson({ValueSerializer? serializer}) {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'id': serializer.toJson<int>(id),
       'measuredAt': serializer.toJson<DateTime>(measuredAt),
       'kg': serializer.toJson<double>(kg),
     };
   }
 
-  WeightEntry copyWith({int? id, DateTime? measuredAt, double? kg}) =>
-      WeightEntry(
-        id: id ?? this.id,
-        measuredAt: measuredAt ?? this.measuredAt,
-        kg: kg ?? this.kg,
-      );
+  WeightEntry copyWith({
+    String? uuid,
+    DateTime? updatedAt,
+    int? id,
+    DateTime? measuredAt,
+    double? kg,
+  }) => WeightEntry(
+    uuid: uuid ?? this.uuid,
+    updatedAt: updatedAt ?? this.updatedAt,
+    id: id ?? this.id,
+    measuredAt: measuredAt ?? this.measuredAt,
+    kg: kg ?? this.kg,
+  );
   WeightEntry copyWithCompanion(WeightEntriesCompanion data) {
     return WeightEntry(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       id: data.id.present ? data.id.value : this.id,
       measuredAt: data.measuredAt.present
           ? data.measuredAt.value
@@ -2201,6 +2533,8 @@ class WeightEntry extends DataClass implements Insertable<WeightEntry> {
   @override
   String toString() {
     return (StringBuffer('WeightEntry(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('measuredAt: $measuredAt, ')
           ..write('kg: $kg')
@@ -2209,37 +2543,49 @@ class WeightEntry extends DataClass implements Insertable<WeightEntry> {
   }
 
   @override
-  int get hashCode => Object.hash(id, measuredAt, kg);
+  int get hashCode => Object.hash(uuid, updatedAt, id, measuredAt, kg);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is WeightEntry &&
+          other.uuid == this.uuid &&
+          other.updatedAt == this.updatedAt &&
           other.id == this.id &&
           other.measuredAt == this.measuredAt &&
           other.kg == this.kg);
 }
 
 class WeightEntriesCompanion extends UpdateCompanion<WeightEntry> {
+  final Value<String> uuid;
+  final Value<DateTime> updatedAt;
   final Value<int> id;
   final Value<DateTime> measuredAt;
   final Value<double> kg;
   const WeightEntriesCompanion({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     this.measuredAt = const Value.absent(),
     this.kg = const Value.absent(),
   });
   WeightEntriesCompanion.insert({
+    this.uuid = const Value.absent(),
+    this.updatedAt = const Value.absent(),
     this.id = const Value.absent(),
     required DateTime measuredAt,
     required double kg,
   }) : measuredAt = Value(measuredAt),
        kg = Value(kg);
   static Insertable<WeightEntry> custom({
+    Expression<String>? uuid,
+    Expression<DateTime>? updatedAt,
     Expression<int>? id,
     Expression<DateTime>? measuredAt,
     Expression<double>? kg,
   }) {
     return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (updatedAt != null) 'updated_at': updatedAt,
       if (id != null) 'id': id,
       if (measuredAt != null) 'measured_at': measuredAt,
       if (kg != null) 'kg': kg,
@@ -2247,11 +2593,15 @@ class WeightEntriesCompanion extends UpdateCompanion<WeightEntry> {
   }
 
   WeightEntriesCompanion copyWith({
+    Value<String>? uuid,
+    Value<DateTime>? updatedAt,
     Value<int>? id,
     Value<DateTime>? measuredAt,
     Value<double>? kg,
   }) {
     return WeightEntriesCompanion(
+      uuid: uuid ?? this.uuid,
+      updatedAt: updatedAt ?? this.updatedAt,
       id: id ?? this.id,
       measuredAt: measuredAt ?? this.measuredAt,
       kg: kg ?? this.kg,
@@ -2261,6 +2611,12 @@ class WeightEntriesCompanion extends UpdateCompanion<WeightEntry> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
     if (id.present) {
       map['id'] = Variable<int>(id.value);
     }
@@ -2276,9 +2632,273 @@ class WeightEntriesCompanion extends UpdateCompanion<WeightEntry> {
   @override
   String toString() {
     return (StringBuffer('WeightEntriesCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('id: $id, ')
           ..write('measuredAt: $measuredAt, ')
           ..write('kg: $kg')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SyncTombstonesTable extends SyncTombstones
+    with TableInfo<$SyncTombstonesTable, SyncTombstone> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SyncTombstonesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _uuidMeta = const VerificationMeta('uuid');
+  @override
+  late final GeneratedColumn<String> uuid = GeneratedColumn<String>(
+    'uuid',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kindMeta = const VerificationMeta('kind');
+  @override
+  late final GeneratedColumn<String> kind = GeneratedColumn<String>(
+    'kind',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _deletedAtMeta = const VerificationMeta(
+    'deletedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> deletedAt = GeneratedColumn<DateTime>(
+    'deleted_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [uuid, kind, deletedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'sync_tombstones';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SyncTombstone> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('uuid')) {
+      context.handle(
+        _uuidMeta,
+        uuid.isAcceptableOrUnknown(data['uuid']!, _uuidMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_uuidMeta);
+    }
+    if (data.containsKey('kind')) {
+      context.handle(
+        _kindMeta,
+        kind.isAcceptableOrUnknown(data['kind']!, _kindMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_kindMeta);
+    }
+    if (data.containsKey('deleted_at')) {
+      context.handle(
+        _deletedAtMeta,
+        deletedAt.isAcceptableOrUnknown(data['deleted_at']!, _deletedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_deletedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {uuid};
+  @override
+  SyncTombstone map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SyncTombstone(
+      uuid: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}uuid'],
+      )!,
+      kind: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}kind'],
+      )!,
+      deletedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}deleted_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SyncTombstonesTable createAlias(String alias) {
+    return $SyncTombstonesTable(attachedDatabase, alias);
+  }
+}
+
+class SyncTombstone extends DataClass implements Insertable<SyncTombstone> {
+  final String uuid;
+  final String kind;
+  final DateTime deletedAt;
+  const SyncTombstone({
+    required this.uuid,
+    required this.kind,
+    required this.deletedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['uuid'] = Variable<String>(uuid);
+    map['kind'] = Variable<String>(kind);
+    map['deleted_at'] = Variable<DateTime>(deletedAt);
+    return map;
+  }
+
+  SyncTombstonesCompanion toCompanion(bool nullToAbsent) {
+    return SyncTombstonesCompanion(
+      uuid: Value(uuid),
+      kind: Value(kind),
+      deletedAt: Value(deletedAt),
+    );
+  }
+
+  factory SyncTombstone.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SyncTombstone(
+      uuid: serializer.fromJson<String>(json['uuid']),
+      kind: serializer.fromJson<String>(json['kind']),
+      deletedAt: serializer.fromJson<DateTime>(json['deletedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'uuid': serializer.toJson<String>(uuid),
+      'kind': serializer.toJson<String>(kind),
+      'deletedAt': serializer.toJson<DateTime>(deletedAt),
+    };
+  }
+
+  SyncTombstone copyWith({String? uuid, String? kind, DateTime? deletedAt}) =>
+      SyncTombstone(
+        uuid: uuid ?? this.uuid,
+        kind: kind ?? this.kind,
+        deletedAt: deletedAt ?? this.deletedAt,
+      );
+  SyncTombstone copyWithCompanion(SyncTombstonesCompanion data) {
+    return SyncTombstone(
+      uuid: data.uuid.present ? data.uuid.value : this.uuid,
+      kind: data.kind.present ? data.kind.value : this.kind,
+      deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncTombstone(')
+          ..write('uuid: $uuid, ')
+          ..write('kind: $kind, ')
+          ..write('deletedAt: $deletedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(uuid, kind, deletedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SyncTombstone &&
+          other.uuid == this.uuid &&
+          other.kind == this.kind &&
+          other.deletedAt == this.deletedAt);
+}
+
+class SyncTombstonesCompanion extends UpdateCompanion<SyncTombstone> {
+  final Value<String> uuid;
+  final Value<String> kind;
+  final Value<DateTime> deletedAt;
+  final Value<int> rowid;
+  const SyncTombstonesCompanion({
+    this.uuid = const Value.absent(),
+    this.kind = const Value.absent(),
+    this.deletedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SyncTombstonesCompanion.insert({
+    required String uuid,
+    required String kind,
+    required DateTime deletedAt,
+    this.rowid = const Value.absent(),
+  }) : uuid = Value(uuid),
+       kind = Value(kind),
+       deletedAt = Value(deletedAt);
+  static Insertable<SyncTombstone> custom({
+    Expression<String>? uuid,
+    Expression<String>? kind,
+    Expression<DateTime>? deletedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (uuid != null) 'uuid': uuid,
+      if (kind != null) 'kind': kind,
+      if (deletedAt != null) 'deleted_at': deletedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SyncTombstonesCompanion copyWith({
+    Value<String>? uuid,
+    Value<String>? kind,
+    Value<DateTime>? deletedAt,
+    Value<int>? rowid,
+  }) {
+    return SyncTombstonesCompanion(
+      uuid: uuid ?? this.uuid,
+      kind: kind ?? this.kind,
+      deletedAt: deletedAt ?? this.deletedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (uuid.present) {
+      map['uuid'] = Variable<String>(uuid.value);
+    }
+    if (kind.present) {
+      map['kind'] = Variable<String>(kind.value);
+    }
+    if (deletedAt.present) {
+      map['deleted_at'] = Variable<DateTime>(deletedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SyncTombstonesCompanion(')
+          ..write('uuid: $uuid, ')
+          ..write('kind: $kind, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -2292,6 +2912,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $MealTemplatesTable mealTemplates = $MealTemplatesTable(this);
   late final $TemplateItemsTable templateItems = $TemplateItemsTable(this);
   late final $WeightEntriesTable weightEntries = $WeightEntriesTable(this);
+  late final $SyncTombstonesTable syncTombstones = $SyncTombstonesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -2302,11 +2923,14 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     mealTemplates,
     templateItems,
     weightEntries,
+    syncTombstones,
   ];
 }
 
 typedef $$FoodEntriesTableCreateCompanionBuilder =
     FoodEntriesCompanion Function({
+      Value<String> uuid,
+      Value<DateTime> updatedAt,
       Value<int> id,
       required String name,
       required MealType mealType,
@@ -2321,6 +2945,8 @@ typedef $$FoodEntriesTableCreateCompanionBuilder =
     });
 typedef $$FoodEntriesTableUpdateCompanionBuilder =
     FoodEntriesCompanion Function({
+      Value<String> uuid,
+      Value<DateTime> updatedAt,
       Value<int> id,
       Value<String> name,
       Value<MealType> mealType,
@@ -2343,6 +2969,16 @@ class $$FoodEntriesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -2410,6 +3046,16 @@ class $$FoodEntriesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -2475,6 +3121,12 @@ class $$FoodEntriesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -2542,6 +3194,8 @@ class $$FoodEntriesTableTableManager
               $$FoodEntriesTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<MealType> mealType = const Value.absent(),
@@ -2554,6 +3208,8 @@ class $$FoodEntriesTableTableManager
                 Value<int?> carbs = const Value.absent(),
                 Value<int?> fat = const Value.absent(),
               }) => FoodEntriesCompanion(
+                uuid: uuid,
+                updatedAt: updatedAt,
                 id: id,
                 name: name,
                 mealType: mealType,
@@ -2568,6 +3224,8 @@ class $$FoodEntriesTableTableManager
               ),
           createCompanionCallback:
               ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 required String name,
                 required MealType mealType,
@@ -2580,6 +3238,8 @@ class $$FoodEntriesTableTableManager
                 Value<int?> carbs = const Value.absent(),
                 Value<int?> fat = const Value.absent(),
               }) => FoodEntriesCompanion.insert(
+                uuid: uuid,
+                updatedAt: updatedAt,
                 id: id,
                 name: name,
                 mealType: mealType,
@@ -2624,6 +3284,8 @@ typedef $$FoodEntriesTableProcessedTableManager =
       PrefetchHooks Function()
     >;
 typedef $$SavedFoodsTableCreateCompanionBuilder = SavedFoodsCompanion Function({
+  Value<String> uuid,
+  Value<DateTime> updatedAt,
   Value<int> id,
   required String name,
   Value<int?> calories,
@@ -2637,6 +3299,8 @@ typedef $$SavedFoodsTableCreateCompanionBuilder = SavedFoodsCompanion Function({
   Value<int?> fat,
 });
 typedef $$SavedFoodsTableUpdateCompanionBuilder = SavedFoodsCompanion Function({
+  Value<String> uuid,
+  Value<DateTime> updatedAt,
   Value<int> id,
   Value<String> name,
   Value<int?> calories,
@@ -2659,6 +3323,16 @@ class $$SavedFoodsTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -2724,6 +3398,16 @@ class $$SavedFoodsTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -2789,6 +3473,12 @@ class $$SavedFoodsTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -2860,6 +3550,8 @@ class $$SavedFoodsTableTableManager
               $$SavedFoodsTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<int?> calories = const Value.absent(),
@@ -2872,6 +3564,8 @@ class $$SavedFoodsTableTableManager
                 Value<int?> carbs = const Value.absent(),
                 Value<int?> fat = const Value.absent(),
               }) => SavedFoodsCompanion(
+                uuid: uuid,
+                updatedAt: updatedAt,
                 id: id,
                 name: name,
                 calories: calories,
@@ -2886,6 +3580,8 @@ class $$SavedFoodsTableTableManager
               ),
           createCompanionCallback:
               ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 required String name,
                 Value<int?> calories = const Value.absent(),
@@ -2898,6 +3594,8 @@ class $$SavedFoodsTableTableManager
                 Value<int?> carbs = const Value.absent(),
                 Value<int?> fat = const Value.absent(),
               }) => SavedFoodsCompanion.insert(
+                uuid: uuid,
+                updatedAt: updatedAt,
                 id: id,
                 name: name,
                 calories: calories,
@@ -2943,12 +3641,16 @@ typedef $$SavedFoodsTableProcessedTableManager =
     >;
 typedef $$MealTemplatesTableCreateCompanionBuilder =
     MealTemplatesCompanion Function({
+      Value<String> uuid,
+      Value<DateTime> updatedAt,
       Value<int> id,
       required String name,
       required MealType mealType,
     });
 typedef $$MealTemplatesTableUpdateCompanionBuilder =
     MealTemplatesCompanion Function({
+      Value<String> uuid,
+      Value<DateTime> updatedAt,
       Value<int> id,
       Value<String> name,
       Value<MealType> mealType,
@@ -2990,6 +3692,16 @@ class $$MealTemplatesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -3041,6 +3753,16 @@ class $$MealTemplatesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -3066,6 +3788,12 @@ class $$MealTemplatesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -3127,17 +3855,30 @@ class $$MealTemplatesTableTableManager
               $$MealTemplatesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$MealTemplatesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<String> name = const Value.absent(),
-            Value<MealType> mealType = const Value.absent(),
-          }) => MealTemplatesCompanion(id: id, name: name, mealType: mealType),
+          updateCompanionCallback:
+              ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<MealType> mealType = const Value.absent(),
+              }) => MealTemplatesCompanion(
+                uuid: uuid,
+                updatedAt: updatedAt,
+                id: id,
+                name: name,
+                mealType: mealType,
+              ),
           createCompanionCallback:
               ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 required String name,
                 required MealType mealType,
               }) => MealTemplatesCompanion.insert(
+                uuid: uuid,
+                updatedAt: updatedAt,
                 id: id,
                 name: name,
                 mealType: mealType,
@@ -3554,12 +4295,16 @@ typedef $$TemplateItemsTableProcessedTableManager =
     >;
 typedef $$WeightEntriesTableCreateCompanionBuilder =
     WeightEntriesCompanion Function({
+      Value<String> uuid,
+      Value<DateTime> updatedAt,
       Value<int> id,
       required DateTime measuredAt,
       required double kg,
     });
 typedef $$WeightEntriesTableUpdateCompanionBuilder =
     WeightEntriesCompanion Function({
+      Value<String> uuid,
+      Value<DateTime> updatedAt,
       Value<int> id,
       Value<DateTime> measuredAt,
       Value<double> kg,
@@ -3574,6 +4319,16 @@ class $$WeightEntriesTableFilterComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -3599,6 +4354,16 @@ class $$WeightEntriesTableOrderingComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -3624,6 +4389,12 @@ class $$WeightEntriesTableAnnotationComposer
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -3665,17 +4436,30 @@ class $$WeightEntriesTableTableManager
               $$WeightEntriesTableOrderingComposer($db: db, $table: table),
           createComputedFieldComposer: () =>
               $$WeightEntriesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback: ({
-            Value<int> id = const Value.absent(),
-            Value<DateTime> measuredAt = const Value.absent(),
-            Value<double> kg = const Value.absent(),
-          }) => WeightEntriesCompanion(id: id, measuredAt: measuredAt, kg: kg),
+          updateCompanionCallback:
+              ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+                Value<int> id = const Value.absent(),
+                Value<DateTime> measuredAt = const Value.absent(),
+                Value<double> kg = const Value.absent(),
+              }) => WeightEntriesCompanion(
+                uuid: uuid,
+                updatedAt: updatedAt,
+                id: id,
+                measuredAt: measuredAt,
+                kg: kg,
+              ),
           createCompanionCallback:
               ({
+                Value<String> uuid = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> id = const Value.absent(),
                 required DateTime measuredAt,
                 required double kg,
               }) => WeightEntriesCompanion.insert(
+                uuid: uuid,
+                updatedAt: updatedAt,
                 id: id,
                 measuredAt: measuredAt,
                 kg: kg,
@@ -3714,6 +4498,179 @@ typedef $$WeightEntriesTableProcessedTableManager =
       WeightEntry,
       PrefetchHooks Function()
     >;
+typedef $$SyncTombstonesTableCreateCompanionBuilder =
+    SyncTombstonesCompanion Function({
+      required String uuid,
+      required String kind,
+      required DateTime deletedAt,
+      Value<int> rowid,
+    });
+typedef $$SyncTombstonesTableUpdateCompanionBuilder =
+    SyncTombstonesCompanion Function({
+      Value<String> uuid,
+      Value<String> kind,
+      Value<DateTime> deletedAt,
+      Value<int> rowid,
+    });
+
+class $$SyncTombstonesTableFilterComposer
+    extends Composer<_$AppDatabase, $SyncTombstonesTable> {
+  $$SyncTombstonesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SyncTombstonesTableOrderingComposer
+    extends Composer<_$AppDatabase, $SyncTombstonesTable> {
+  $$SyncTombstonesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get uuid => $composableBuilder(
+    column: $table.uuid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get kind => $composableBuilder(
+    column: $table.kind,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get deletedAt => $composableBuilder(
+    column: $table.deletedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SyncTombstonesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $SyncTombstonesTable> {
+  $$SyncTombstonesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get uuid =>
+      $composableBuilder(column: $table.uuid, builder: (column) => column);
+
+  GeneratedColumn<String> get kind =>
+      $composableBuilder(column: $table.kind, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get deletedAt =>
+      $composableBuilder(column: $table.deletedAt, builder: (column) => column);
+}
+
+class $$SyncTombstonesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $SyncTombstonesTable,
+          SyncTombstone,
+          $$SyncTombstonesTableFilterComposer,
+          $$SyncTombstonesTableOrderingComposer,
+          $$SyncTombstonesTableAnnotationComposer,
+          $$SyncTombstonesTableCreateCompanionBuilder,
+          $$SyncTombstonesTableUpdateCompanionBuilder,
+          (
+            SyncTombstone,
+            BaseReferences<_$AppDatabase, $SyncTombstonesTable, SyncTombstone>,
+          ),
+          SyncTombstone,
+          PrefetchHooks Function()
+        > {
+  $$SyncTombstonesTableTableManager(
+    _$AppDatabase db,
+    $SyncTombstonesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SyncTombstonesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SyncTombstonesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SyncTombstonesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> uuid = const Value.absent(),
+                Value<String> kind = const Value.absent(),
+                Value<DateTime> deletedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SyncTombstonesCompanion(
+                uuid: uuid,
+                kind: kind,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String uuid,
+                required String kind,
+                required DateTime deletedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => SyncTombstonesCompanion.insert(
+                uuid: uuid,
+                kind: kind,
+                deletedAt: deletedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$SyncTombstonesTable, SyncTombstone>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SyncTombstonesTable,
+                    SyncTombstone
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SyncTombstonesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $SyncTombstonesTable,
+      SyncTombstone,
+      $$SyncTombstonesTableFilterComposer,
+      $$SyncTombstonesTableOrderingComposer,
+      $$SyncTombstonesTableAnnotationComposer,
+      $$SyncTombstonesTableCreateCompanionBuilder,
+      $$SyncTombstonesTableUpdateCompanionBuilder,
+      (
+        SyncTombstone,
+        BaseReferences<_$AppDatabase, $SyncTombstonesTable, SyncTombstone>,
+      ),
+      SyncTombstone,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3728,4 +4685,6 @@ class $AppDatabaseManager {
       $$TemplateItemsTableTableManager(_db, _db.templateItems);
   $$WeightEntriesTableTableManager get weightEntries =>
       $$WeightEntriesTableTableManager(_db, _db.weightEntries);
+  $$SyncTombstonesTableTableManager get syncTombstones =>
+      $$SyncTombstonesTableTableManager(_db, _db.syncTombstones);
 }
