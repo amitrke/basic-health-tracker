@@ -6,6 +6,9 @@ import '../data/calories.dart';
 import '../data/database.dart';
 import '../services/ai_estimator.dart';
 import '../services/services.dart';
+import '../theme.dart';
+import '../util/units.dart';
+import '../widgets/common.dart';
 import 'ai_estimate_sheet.dart';
 import 'scan_screen.dart';
 
@@ -47,6 +50,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     text: widget.existing?.calories?.toString(),
   );
   late final _notes = TextEditingController(text: widget.existing?.notes);
+  late final _protein = TextEditingController(
+    text: widget.existing?.protein?.toString(),
+  );
+  late final _carbs = TextEditingController(
+    text: widget.existing?.carbs?.toString(),
+  );
+  late final _fat = TextEditingController(
+    text: widget.existing?.fat?.toString(),
+  );
   late MealType _meal = widget.existing?.mealType ?? _guessMeal();
 
   Portion? _portion;
@@ -72,6 +84,9 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     _name.dispose();
     _calories.dispose();
     _notes.dispose();
+    _protein.dispose();
+    _carbs.dispose();
+    _fat.dispose();
     super.dispose();
   }
 
@@ -86,6 +101,18 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
 
   int? get _baseCalories => int.tryParse(_calories.text.trim());
 
+  Macros get _macros => Macros(
+    protein: int.tryParse(_protein.text.trim()),
+    carbs: int.tryParse(_carbs.text.trim()),
+    fat: int.tryParse(_fat.text.trim()),
+  );
+
+  void _setMacros(int? protein, int? carbs, int? fat) {
+    _protein.text = protein?.toString() ?? '';
+    _carbs.text = carbs?.toString() ?? '';
+    _fat.text = fat?.toString() ?? '';
+  }
+
   Future<void> _onNameChanged(String text) async {
     final found = _isEdit
         ? const <SavedFood>[]
@@ -97,6 +124,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     setState(() {
       _name.text = food.name;
       _calories.text = food.calories?.toString() ?? '';
+      _setMacros(food.protein, food.carbs, food.fat);
       _estimated = food.isEstimate;
       _barcode = food.barcode;
       _portionLabel = food.portionLabel;
@@ -171,6 +199,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
       setState(() {
         _name.text = product.name;
         _calories.text = product.calories?.toString() ?? '';
+        _setMacros(product.protein, product.carbs, product.fat);
         _estimated = false;
         _barcode = product.barcode;
         _portionLabel = product.portionLabel;
@@ -209,6 +238,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
     setState(() {
       if (_name.text.trim().isEmpty) _name.text = result.summary;
       _calories.text = result.totalCalories.toString();
+      _setMacros(result.totalProtein, result.totalCarbs, result.totalFat);
       _estimated = true;
       if (_notes.text.trim().isEmpty && result.items.length > 1) {
         _notes.text = result.items
@@ -231,6 +261,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         meal: _meal,
         at: _loggedAt(),
         baseCalories: _baseCalories,
+        baseMacros: _macros,
         baseIsEstimate: _estimated,
         portion: _portion,
         notes: notes,
@@ -247,6 +278,9 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
         mealType: _meal,
         calories: Value(calories),
         notes: Value(notes),
+        protein: Value(_macros.protein),
+        carbs: Value(_macros.carbs),
+        fat: Value(_macros.fat),
         isEstimate:
             _estimated ||
             (calories != null &&
@@ -260,12 +294,16 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final p = context.palette;
+    final units = Units(widget.services.prefs.value);
     final preview = resolveCalories(
       base: _baseCalories,
       baseIsEstimate: _estimated,
       portion: _portion,
       meal: _meal,
     );
+    void unfocus(PointerDownEvent _) =>
+        FocusManager.instance.primaryFocus?.unfocus();
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -281,6 +319,11 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Text(
+                _isEdit ? 'Edit food' : 'Log food',
+                style: theme.textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
               SegmentedButton<MealType>(
                 segments: [
                   for (final m in MealType.values)
@@ -295,125 +338,188 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               ),
               if (!_isEdit) _quickAdd(theme),
               const SizedBox(height: 12),
-              TextFormField(
-                controller: _name,
-                onTapOutside: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                autofocus: !_isEdit,
-                textCapitalization: TextCapitalization.sentences,
-                decoration: const InputDecoration(
-                  labelText: 'What did you eat?',
-                ),
-                onChanged: _onNameChanged,
-                autovalidateMode: AutovalidateMode.onUserInteraction,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Enter a food' : null,
-              ),
-              if (_suggestions.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
-                    children: [
-                      for (final f in _suggestions)
-                        ActionChip(
-                          label: Text(
-                            f.calories == null
-                                ? f.name
-                                : '${f.name} · ${f.calories}',
-                          ),
-                          onPressed: () => _applySaved(f),
+              SectionCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _name,
+                      onTapOutside: unfocus,
+                      autofocus: !_isEdit,
+                      textCapitalization: TextCapitalization.sentences,
+                      decoration: const InputDecoration(
+                        labelText: 'What did you eat?',
+                        hintText: 'Two eggs and buttered toast',
+                      ),
+                      onChanged: _onNameChanged,
+                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'Enter a food'
+                          : null,
+                    ),
+                    if (_suggestions.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: [
+                            for (final f in _suggestions)
+                              ActionChip(
+                                label: Text(
+                                  f.calories == null
+                                      ? f.name
+                                      : '${f.name} · ${units.energyNumber(f.calories!)}',
+                                ),
+                                onPressed: () => _applySaved(f),
+                              ),
+                          ],
                         ),
-                    ],
-                  ),
-                ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _calories,
-                onTapOutside: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: 'Calories (optional)',
-                  helperText: _estimated ? 'Estimated' : _portionLabel,
-                ),
-                onChanged: (_) => setState(() => _estimated = false),
-                validator: (v) {
-                  if (v == null || v.trim().isEmpty) return null;
-                  final n = int.tryParse(v.trim());
-                  return (n == null || n < 0 || n > 20000)
-                      ? 'Enter a valid number'
-                      : null;
-                },
-              ),
-              if (!_isEdit) ...[
-                const SizedBox(height: 12),
-                SegmentedButton<Portion>(
-                  emptySelectionAllowed: true,
-                  segments: [
-                    for (final p in Portion.values)
-                      ButtonSegment(
-                        value: p,
-                        label: Text(toBeginningOfSentenceCase(p.name)),
+                      ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            onPressed: _askAi,
+                            icon: const Icon(Icons.auto_awesome),
+                            label: const Text('Estimate'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _busy ? null : _scan,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size(48, 52),
+                            ),
+                            icon: _busy
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : const Icon(Icons.qr_code_scanner),
+                            label: const Text('Scan'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_message != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          _message!,
+                          style: theme.textTheme.bodySmall,
+                        ),
                       ),
                   ],
-                  selected: {?_portion},
-                  showSelectedIcon: false,
-                  onSelectionChanged: (s) =>
-                      setState(() => _portion = s.firstOrNull),
                 ),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4, left: 4),
-                  child: Text(
-                    preview.kcal == null
-                        ? 'Pick a size for a rough calorie estimate, or skip it.'
-                        : 'Logs as ${preview.isEstimate ? '~' : ''}${preview.kcal} kcal',
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _busy ? null : _scan,
-                      icon: _busy
-                          ? const SizedBox.square(
-                              dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.qr_code_scanner),
-                      label: const Text('Scan'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _askAi,
-                      icon: const Icon(Icons.auto_awesome),
-                      label: const Text('Estimate'),
-                    ),
-                  ),
-                ],
               ),
-              if (_message != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(_message!, style: theme.textTheme.bodySmall),
+              const SizedBox(height: 12),
+              SectionCard(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextFormField(
+                      controller: _calories,
+                      onTapOutside: unfocus,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Calories, kcal (optional)',
+                        helperText: _estimated ? 'Estimated' : _portionLabel,
+                      ),
+                      onChanged: (_) => setState(() => _estimated = false),
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        final n = int.tryParse(v.trim());
+                        return (n == null || n < 0 || n > 20000)
+                            ? 'Enter a valid number'
+                            : null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        for (final (label, controller, color) in [
+                          ('Protein', _protein, p.protein),
+                          ('Carbs', _carbs, p.carbs),
+                          ('Fat', _fat, p.fat),
+                        ]) ...[
+                          if (label != 'Protein') const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: controller,
+                              onTapOutside: unfocus,
+                              keyboardType: TextInputType.number,
+                              decoration: InputDecoration(
+                                labelText: label,
+                                suffixText: 'g',
+                                prefixIcon: Padding(
+                                  padding: const EdgeInsets.only(left: 12),
+                                  child: Dot(color),
+                                ),
+                                prefixIconConstraints: const BoxConstraints(
+                                  minWidth: 28,
+                                ),
+                              ),
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return null;
+                                final n = int.tryParse(v.trim());
+                                return (n == null || n < 0 || n > 2000)
+                                    ? 'Invalid'
+                                    : null;
+                              },
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    if (!_isEdit) ...[
+                      const SizedBox(height: 12),
+                      SegmentedButton<Portion>(
+                        emptySelectionAllowed: true,
+                        segments: [
+                          for (final p in Portion.values)
+                            ButtonSegment(
+                              value: p,
+                              label: Text(toBeginningOfSentenceCase(p.name)),
+                            ),
+                        ],
+                        selected: {?_portion},
+                        showSelectedIcon: false,
+                        onSelectionChanged: (s) =>
+                            setState(() => _portion = s.firstOrNull),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6, left: 4),
+                        child: Text(
+                          preview.kcal == null
+                              ? 'Pick a size for a rough calorie estimate, or skip it.'
+                              : 'Logs as ${units.energy(preview.kcal!, estimate: preview.isEstimate)}',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
+              ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notes,
-                onTapOutside: (_) =>
-                    FocusManager.instance.primaryFocus?.unfocus(),
+                onTapOutside: unfocus,
                 decoration: const InputDecoration(
                   labelText: 'Notes (optional)',
                 ),
               ),
               const SizedBox(height: 16),
-              FilledButton(onPressed: _save, child: const Text('Save')),
+              FilledButton(
+                onPressed: _save,
+                child: Text(_isEdit ? 'Save changes' : 'Add to ${_meal.name}'),
+              ),
             ],
           ),
         ),
@@ -434,43 +540,54 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
           if (t.isEmpty && f.isEmpty) return const SizedBox.shrink();
           return Padding(
             padding: const EdgeInsets.only(top: 12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Tap to log', style: theme.textTheme.labelMedium),
-                const SizedBox(height: 4),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 0,
-                  children: [
-                    for (final tpl in t)
-                      GestureDetector(
-                        onLongPress: () => _confirmDelete(
-                          title: 'Remove "${tpl.name}"?',
-                          onDelete: () =>
-                              widget.database.deleteTemplate(tpl.id),
-                        ),
-                        child: ActionChip(
-                          avatar: const Icon(Icons.restaurant_menu, size: 18),
-                          label: Text(tpl.name),
-                          onPressed: () => _quickLogTemplate(tpl),
-                        ),
+            child: SectionCard(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CardHeader(
+                    'Your foods',
+                    trailing: Text(
+                      'Tap to log',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: context.palette.muted,
                       ),
-                    for (final food in f)
-                      GestureDetector(
-                        onLongPress: () => _confirmDelete(
-                          title: 'Remove "${food.name}" from quick add?',
-                          onDelete: () =>
-                              widget.database.deleteSavedFood(food.id),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 0,
+                    children: [
+                      for (final tpl in t)
+                        GestureDetector(
+                          onLongPress: () => _confirmDelete(
+                            title: 'Remove "${tpl.name}"?',
+                            onDelete: () =>
+                                widget.database.deleteTemplate(tpl.id),
+                          ),
+                          child: ActionChip(
+                            avatar: const Icon(Icons.restaurant_menu, size: 18),
+                            label: Text(tpl.name),
+                            onPressed: () => _quickLogTemplate(tpl),
+                          ),
                         ),
-                        child: ActionChip(
-                          label: Text(food.name),
-                          onPressed: () => _quickLogFood(food),
+                      for (final food in f)
+                        GestureDetector(
+                          onLongPress: () => _confirmDelete(
+                            title: 'Remove "${food.name}" from quick add?',
+                            onDelete: () =>
+                                widget.database.deleteSavedFood(food.id),
+                          ),
+                          child: ActionChip(
+                            label: Text(food.name),
+                            onPressed: () => _quickLogFood(food),
+                          ),
                         ),
-                      ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },

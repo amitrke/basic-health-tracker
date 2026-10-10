@@ -7,6 +7,7 @@ import 'package:wellbite/data/database.dart';
 import 'package:wellbite/main.dart';
 import 'package:wellbite/services/health_service.dart';
 import 'package:wellbite/services/services.dart';
+import 'package:wellbite/services/user_prefs.dart';
 
 class FakeHealth implements HealthSource {
   FakeHealth({this.burned = const EnergyBurned()});
@@ -25,6 +26,9 @@ class FakeHealth implements HealthSource {
   @override
   Future<BodyStats> bodyStats() async =>
       const BodyStats(weightKg: 70, heightCm: 175);
+
+  @override
+  Future<List<WeightReading>> weightHistory(DateTime from) async => const [];
 }
 
 void main() {
@@ -61,6 +65,7 @@ void main() {
         database: db,
         services: AppServices(
           settingsStore: MemoryAiSettingsStore(),
+          userPrefs: MemoryUserPrefsStore(),
           health: FakeHealth(burned: const EnergyBurned(active: 300)),
           healthPrefs: prefs,
         ),
@@ -73,7 +78,7 @@ void main() {
     await tester.pump();
 
     // 70 kg, 175 cm, 30, male = 1649 resting, plus 300 active.
-    expect(find.text('~1949 kcal'), findsOneWidget);
+    expect(find.text('~1,949 kcal'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
@@ -84,7 +89,7 @@ void main() {
     expect(bestSourceTotal(const []), isNull);
   });
 
-  testWidgets('day screen shows calories burned and the net', (tester) async {
+  testWidgets('today shows calories burned and the net', (tester) async {
     final db = AppDatabase(NativeDatabase.memory());
     await tester.runAsync(
       () => db.addEntry(
@@ -101,6 +106,7 @@ void main() {
         database: db,
         services: AppServices(
           settingsStore: MemoryAiSettingsStore(),
+          userPrefs: MemoryUserPrefsStore(),
           health: FakeHealth(
             burned: const EnergyBurned(active: 300, total: 2100),
           ),
@@ -115,8 +121,8 @@ void main() {
     await tester.pump();
 
     expect(find.text('Calories burned'), findsOneWidget);
-    expect(find.text('2100 kcal'), findsOneWidget);
-    expect(find.text('Active 300 kcal · Net -1600 kcal'), findsOneWidget);
+    expect(find.text('2,100 kcal'), findsOneWidget);
+    expect(find.text('Active 300 kcal · Net -1,600 kcal'), findsOneWidget);
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 1));
@@ -130,6 +136,7 @@ void main() {
         database: db,
         services: AppServices(
           settingsStore: MemoryAiSettingsStore(),
+          userPrefs: MemoryUserPrefsStore(),
           health: FakeHealth(burned: const EnergyBurned(active: 300)),
           healthPrefs: MemoryHealthPrefsStore(false),
         ),

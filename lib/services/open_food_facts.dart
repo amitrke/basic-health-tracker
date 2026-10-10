@@ -8,6 +8,9 @@ class ScannedProduct {
     required this.name,
     this.calories,
     this.portionLabel,
+    this.protein,
+    this.carbs,
+    this.fat,
   });
 
   final String barcode;
@@ -16,6 +19,11 @@ class ScannedProduct {
   /// Per serving when the product lists one, otherwise per 100 g.
   final int? calories;
   final String? portionLabel;
+
+  /// Grams for the same amount as [calories].
+  final int? protein;
+  final int? carbs;
+  final int? fat;
 }
 
 /// Looks up packaged food by barcode in the free Open Food Facts database.
@@ -35,7 +43,10 @@ class OpenFoodFacts {
       },
     );
     final response = await _client
-        .get(uri, headers: {'User-Agent': 'Wellbite/1.0 (food logger)'})
+        .get(
+          uri,
+          headers: {'User-Agent': 'BasicHealthTracker/1.0 (food logger)'},
+        )
         .timeout(const Duration(seconds: 10));
     if (response.statusCode == 404) return null;
     if (response.statusCode != 200) {
@@ -69,21 +80,40 @@ class OpenFoodFacts {
 
     int? calories;
     String? label;
+    // How to turn a per-100 g value into the amount [calories] is for.
+    double? per100Factor;
     if (perServing != null) {
       calories = perServing.round();
       label = servingSize;
+      if (servingGrams != null && servingGrams > 0) {
+        per100Factor = servingGrams / 100;
+      }
     } else if (per100 != null && servingGrams != null && servingGrams > 0) {
-      calories = (per100 * servingGrams / 100).round();
+      per100Factor = servingGrams / 100;
+      calories = (per100 * per100Factor).round();
       label = servingSize ?? '${servingGrams.round()} g';
     } else if (per100 != null) {
+      per100Factor = 1;
       calories = per100.round();
       label = '100 g';
     }
+
+    int? grams(String nutrient) {
+      final serving = number('${nutrient}_serving');
+      if (perServing != null && serving != null) return serving.round();
+      final p100 = number('${nutrient}_100g');
+      if (p100 == null || per100Factor == null) return null;
+      return (p100 * per100Factor).round();
+    }
+
     return ScannedProduct(
       barcode: barcode,
       name: name,
       calories: calories,
       portionLabel: label == null || label.isEmpty ? null : label,
+      protein: grams('proteins'),
+      carbs: grams('carbohydrates'),
+      fat: grams('fat'),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'ai_estimator.dart';
 import 'ai_settings.dart';
 import 'health_service.dart';
 import 'open_food_facts.dart';
+import 'user_prefs.dart';
 
 /// Where the AI provider settings (including API keys) live.
 abstract class AiSettingsStore {
@@ -56,15 +57,20 @@ class AppServices {
     http.Client? client,
     HealthSource? health,
     HealthPrefsStore? healthPrefs,
+    UserPrefsStore? userPrefs,
   }) : settingsStore = settingsStore ?? SecureAiSettingsStore(),
        client = client ?? http.Client(),
        health = health ?? PlatformHealthSource(),
-       healthPrefs = healthPrefs ?? SecureHealthPrefsStore();
+       healthPrefs = healthPrefs ?? SecureHealthPrefsStore(),
+       prefs = PrefsController(userPrefs ?? SecureUserPrefsStore());
 
   final AiSettingsStore settingsStore;
   final http.Client client;
   final HealthSource health;
   final HealthPrefsStore healthPrefs;
+
+  /// Goals, units and onboarding state; [PrefsController.load] it once.
+  final PrefsController prefs;
 
   OpenFoodFacts get openFoodFacts => OpenFoodFacts(client);
 

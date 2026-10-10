@@ -8,10 +8,21 @@ import 'package:http/http.dart' as http;
 import 'ai_settings.dart';
 
 class EstimatedItem {
-  const EstimatedItem({required this.name, required this.calories});
+  const EstimatedItem({
+    required this.name,
+    required this.calories,
+    this.protein,
+    this.carbs,
+    this.fat,
+  });
 
   final String name;
   final int calories;
+
+  /// Grams, when the model gave them.
+  final int? protein;
+  final int? carbs;
+  final int? fat;
 }
 
 class AiEstimate {
@@ -20,6 +31,16 @@ class AiEstimate {
   final List<EstimatedItem> items;
 
   int get totalCalories => items.fold(0, (s, i) => s + i.calories);
+
+  /// Null for a macro no item reported.
+  int? _sum(int? Function(EstimatedItem) pick) {
+    final known = items.map(pick).whereType<int>();
+    return known.isEmpty ? null : known.fold<int>(0, (s, g) => s + g);
+  }
+
+  int? get totalProtein => _sum((i) => i.protein);
+  int? get totalCarbs => _sum((i) => i.carbs);
+  int? get totalFat => _sum((i) => i.fat);
   String get summary => items.map((i) => i.name).join(', ');
 }
 
@@ -47,8 +68,10 @@ class AiEstimator {
       'You estimate calories for food logging. Given a description and/or '
       'photo of a meal, list each distinct food with a realistic calorie '
       'estimate for the portion shown or described (assume a typical single '
-      'serving if unspecified). Respond with only JSON, no prose, in this '
-      'shape: {"items":[{"name":"short food name","calories":123}]}';
+      'serving if unspecified), plus protein, carbohydrate and fat in grams. '
+      'Respond with only JSON, no prose, in this shape: '
+      '{"items":[{"name":"short food name","calories":123,"protein":10,'
+      '"carbs":15,"fat":5}]}';
 
   final AiConfig config;
   final http.Client _client;
@@ -183,7 +206,8 @@ class AiEstimator {
       headers: {
         if (key.isNotEmpty) 'Authorization': 'Bearer $key',
         'content-type': 'application/json',
-        if (config.provider == AiProvider.openRouter) 'X-Title': 'Wellbite',
+        if (config.provider == AiProvider.openRouter)
+          'X-Title': 'Basic Health Tracker',
       },
       body: jsonEncode({
         'model': config.model,
@@ -238,8 +262,21 @@ class AiEstimator {
       for (final raw in (json['items'] as List)) {
         final name = (raw['name'] as String).trim();
         final calories = (raw['calories'] as num).round();
+        int? grams(String key) {
+          final v = raw[key];
+          return v is num && v >= 0 ? v.round() : null;
+        }
+
         if (name.isNotEmpty && calories >= 0) {
-          items.add(EstimatedItem(name: name, calories: calories));
+          items.add(
+            EstimatedItem(
+              name: name,
+              calories: calories,
+              protein: grams('protein'),
+              carbs: grams('carbs'),
+              fat: grams('fat'),
+            ),
+          );
         }
       }
       if (items.isEmpty) {

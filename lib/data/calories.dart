@@ -50,3 +50,43 @@ CalorieResult resolveCalories({
   }
   return const CalorieResult(null);
 }
+
+/// Protein, carbs and fat in grams. Any of them may be unknown.
+class Macros {
+  const Macros({this.protein, this.carbs, this.fat});
+
+  static const none = Macros();
+
+  /// Reads the macro fields of a food entry, saved food or template item.
+  factory Macros.of(Object row) => switch (row) {
+    FoodEntry e => Macros(protein: e.protein, carbs: e.carbs, fat: e.fat),
+    SavedFood f => Macros(protein: f.protein, carbs: f.carbs, fat: f.fat),
+    TemplateItem i => Macros(protein: i.protein, carbs: i.carbs, fat: i.fat),
+    _ => none,
+  };
+
+  final int? protein;
+  final int? carbs;
+  final int? fat;
+
+  bool get isEmpty => protein == null && carbs == null && fat == null;
+
+  Macros scaled(double factor) => Macros(
+    protein: protein == null ? null : (protein! * factor).round(),
+    carbs: carbs == null ? null : (carbs! * factor).round(),
+    fat: fat == null ? null : (fat! * factor).round(),
+  );
+
+  Macros operator +(Macros o) => Macros(
+    protein: _add(protein, o.protein),
+    carbs: _add(carbs, o.carbs),
+    fat: _add(fat, o.fat),
+  );
+
+  static int? _add(int? a, int? b) =>
+      a == null && b == null ? null : (a ?? 0) + (b ?? 0);
+
+  /// Summed over [entries]; unknown values count as nothing.
+  static Macros total(Iterable<FoodEntry> entries) =>
+      entries.fold(none, (sum, e) => sum + Macros.of(e));
+}
