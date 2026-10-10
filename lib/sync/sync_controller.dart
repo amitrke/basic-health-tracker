@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 
 import '../data/database.dart';
 import 'drive_backend.dart';
+import 'icloud_backend.dart';
 import 'sync_backend.dart';
 import 'sync_engine.dart';
 import 'sync_snapshot.dart';
@@ -79,17 +80,22 @@ class SyncController extends ChangeNotifier {
   }) : _prefsStore = prefsStore ?? SecureSyncPrefsStore(),
        _engine = SyncEngine(SyncStore(database), backend);
 
-  /// Sync for this platform: Google Drive on Android. Null elsewhere (iOS
-  /// gets its own backend; see docs/SYNC.md).
+  /// Sync for this platform: Google Drive on Android, iCloud on iOS. Null
+  /// elsewhere.
   static SyncController? forPlatform(AppDatabase database) {
-    if (defaultTargetPlatform != TargetPlatform.android) return null;
-    return SyncController(
-      database: database,
-      backend: DriveSyncBackend(
-        auth: GoogleDriveAuth(),
-        client: http.Client(),
-      ),
-    );
+    final SyncBackend backend;
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        backend = DriveSyncBackend(
+          auth: GoogleDriveAuth(),
+          client: http.Client(),
+        );
+      case TargetPlatform.iOS:
+        backend = ICloudSyncBackend();
+      default:
+        return null;
+    }
+    return SyncController(database: database, backend: backend);
   }
 
   final AppDatabase database;

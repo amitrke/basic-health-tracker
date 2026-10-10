@@ -17,7 +17,7 @@ The file is `wellbite-sync.json`. Code: `lib/sync/`.
 | Platform | Where the file lives | Status |
 |---|---|---|
 | Android | Google Drive hidden app folder (`drive.appdata` scope) | Built; needs the Google setup below |
-| iOS / iPadOS | iCloud container | Not built yet |
+| iOS / iPadOS | iCloud container `iCloud.com.subnext.wellbite` | Built; untested on a device until first Xcode build |
 
 If two devices both held data before sync was first turned on, the second one to
 sync pairs rows with the same food, meal and time, so nothing doubles.
@@ -40,3 +40,14 @@ flutter run --dart-define=GOOGLE_SERVER_CLIENT_ID=<web-client-id>.apps.googleuse
 ```
 
 Without the define, the Sync row in Settings is disabled with an explanation.
+
+## iOS setup
+
+The App ID `com.subnext.wellbite` already has iCloud (with CloudKit support)
+and the container `iCloud.com.subnext.wellbite` assigned in the developer
+portal. The entitlements are in `ios/Runner/Runner.entitlements` and the native
+side is `ios/Runner/ICloudSync.swift`.
+
+Test on two real devices (or a device and a simulator) signed in to the same
+iCloud account with iCloud Drive on. Provisioning profiles for the App ID were
+invalidated by the capability change; Xcode's automatic signing regenerates them.
