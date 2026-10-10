@@ -48,7 +48,24 @@ class _DayScreenState extends State<DayScreen> with WidgetsBindingObserver {
       try {
         if (!await widget.services.healthPrefs.readEnabled()) return null;
         final burned = await widget.services.health.energyBurned(day);
-        return burned.isEmpty ? null : burned;
+        if (burned.isEmpty) return null;
+        if (burned.total != null || burned.active == null) return burned;
+        // Health gave only exercise calories. Add what the body burns at
+        // rest, if weight, height, age and sex are known.
+        final body = await widget.services.health.bodyStats();
+        final profile = await widget.services.healthPrefs.readProfile();
+        final resting = restingKcal(
+          weightKg: body.weightKg,
+          heightCm: body.heightCm,
+          age: profile.age,
+          sex: profile.sex,
+        );
+        if (resting == null) return burned;
+        return EnergyBurned(
+          active: burned.active,
+          total: burned.active! + resting,
+          totalIsEstimate: true,
+        );
       } catch (_) {
         // Health is a bonus; the food log must work without it.
         return null;
@@ -305,7 +322,7 @@ class _BurnedTile extends StatelessWidget {
         ].join(' · '),
       ),
       trailing: Text(
-        '$out kcal',
+        '${burned.totalIsEstimate ? '~' : ''}$out kcal',
         style: Theme.of(context).textTheme.titleMedium,
       ),
     );

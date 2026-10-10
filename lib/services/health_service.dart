@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io' show Platform;
 
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -5,7 +6,7 @@ import 'package:health/health.dart';
 
 /// Calories burned on one day, as reported by Apple Health or Health Connect.
 class EnergyBurned {
-  const EnergyBurned({this.active, this.total});
+  const EnergyBurned({this.active, this.total, this.totalIsEstimate = false});
 
   /// Exercise and movement only.
   final int? active;
@@ -13,7 +14,38 @@ class EnergyBurned {
   /// Active plus resting energy, when the platform reports it.
   final int? total;
 
+  /// [total] was worked out from weight, height, age and sex rather than
+  /// reported by Health.
+  final bool totalIsEstimate;
+
   bool get isEmpty => active == null && total == null;
+}
+
+enum Sex { female, male }
+
+/// What Health does not hand over, entered once in Settings.
+class BodyProfile {
+  const BodyProfile({this.age, this.sex});
+
+  final int? age;
+  final Sex? sex;
+
+  Map<String, Object?> toJson() => {'age': age, 'sex': sex?.name};
+
+  factory BodyProfile.fromJson(Map<String, dynamic> json) => BodyProfile(
+    age: json['age'] as int?,
+    sex: Sex.values.where((s) => s.name == json['sex']).firstOrNull,
+  );
+}
+
+/// Calories the body burns at rest in a day (Mifflin-St Jeor), or null when
+/// any input is missing.
+int? restingKcal({double? weightKg, double? heightCm, int? age, Sex? sex}) {
+  if (weightKg == null || heightCm == null || age == null || sex == null) {
+    return null;
+  }
+  final base = 10 * weightKg + 6.25 * heightCm - 5 * age;
+  return (base + (sex == Sex.male ? 5 : -161)).round();
 }
 
 /// The person's body measurements, as last recorded in Health.
@@ -44,11 +76,14 @@ abstract class HealthSource {
 abstract class HealthPrefsStore {
   Future<bool> readEnabled();
   Future<void> writeEnabled(bool enabled);
+  Future<BodyProfile> readProfile();
+  Future<void> writeProfile(BodyProfile profile);
 }
 
 class SecureHealthPrefsStore implements HealthPrefsStore {
   static const _storage = FlutterSecureStorage();
   static const _name = 'health_enabled';
+  static const _profileName = 'body_profile';
 
   @override
   Future<bool> readEnabled() async => await _storage.read(key: _name) == '1';
@@ -56,18 +91,40 @@ class SecureHealthPrefsStore implements HealthPrefsStore {
   @override
   Future<void> writeEnabled(bool enabled) =>
       _storage.write(key: _name, value: enabled ? '1' : '0');
+
+  @override
+  Future<BodyProfile> readProfile() async {
+    final stored = await _storage.read(key: _profileName);
+    if (stored == null) return const BodyProfile();
+    try {
+      return BodyProfile.fromJson(jsonDecode(stored) as Map<String, dynamic>);
+    } catch (_) {
+      return const BodyProfile();
+    }
+  }
+
+  @override
+  Future<void> writeProfile(BodyProfile profile) =>
+      _storage.write(key: _profileName, value: jsonEncode(profile.toJson()));
 }
 
 class MemoryHealthPrefsStore implements HealthPrefsStore {
   MemoryHealthPrefsStore([this._enabled = false]);
 
   bool _enabled;
+  BodyProfile _profile = const BodyProfile();
 
   @override
   Future<bool> readEnabled() async => _enabled;
 
   @override
   Future<void> writeEnabled(bool enabled) async => _enabled = enabled;
+
+  @override
+  Future<BodyProfile> readProfile() async => _profile;
+
+  @override
+  Future<void> writeProfile(BodyProfile profile) async => _profile = profile;
 }
 
 /// Sums [points] per source and returns the largest sum.

@@ -203,6 +203,9 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
       ),
     );
     if (result == null || !mounted) return;
+    // Closing the estimate sheet hands focus back to the name field, which
+    // would reopen the keyboard over the Save button.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       if (_name.text.trim().isEmpty) _name.text = result.summary;
       _calories.text = result.totalCalories.toString();
@@ -273,6 +276,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -293,6 +297,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _name,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 autofocus: !_isEdit,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
@@ -325,6 +331,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _calories,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Calories (optional)',
@@ -398,6 +406,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notes,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 decoration: const InputDecoration(
                   labelText: 'Notes (optional)',
                 ),

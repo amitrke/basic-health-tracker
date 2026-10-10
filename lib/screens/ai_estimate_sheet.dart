@@ -130,12 +130,15 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
         MediaQuery.of(context).viewInsets.bottom + 16,
       ),
       child: SingleChildScrollView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             TextField(
               controller: _description,
+              onTapOutside: (_) =>
+                  FocusManager.instance.primaryFocus?.unfocus(),
               // No keyboard when the estimate is already running.
               autofocus: !_hasInitialDescription,
               minLines: 1,
