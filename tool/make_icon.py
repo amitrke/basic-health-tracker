@@ -1,4 +1,4 @@
-"""Draws the Wellbite bowl icon masters into assets/icon/.
+"""Draws the Basic Health Tracker bowl icon masters into assets/icon/.
 
 Run: python tool/make_icon.py   (needs Pillow), then
      dart run flutter_launcher_icons

@@ -183,7 +183,8 @@ class AiEstimator {
       headers: {
         if (key.isNotEmpty) 'Authorization': 'Bearer $key',
         'content-type': 'application/json',
-        if (config.provider == AiProvider.openRouter) 'X-Title': 'Wellbite',
+        if (config.provider == AiProvider.openRouter)
+          'X-Title': 'Basic Health Tracker',
       },
       body: jsonEncode({
         'model': config.model,

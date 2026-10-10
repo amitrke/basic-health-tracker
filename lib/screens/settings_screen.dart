@@ -121,13 +121,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
         return;
       }
-      if (!await health.requestAccess()) {
+      String? failure;
+      try {
+        if (!await health.requestAccess()) {
+          // iOS hides a refusal to read, so false there means the request
+          // itself failed, usually a build without the HealthKit entitlement.
+          failure = Platform.isIOS
+              ? 'Apple Health would not open the permission screen. Please '
+                    'update the app and try again.'
+              : 'Access was not granted. You can allow it in $_healthName '
+                    'settings.';
+        }
+      } catch (e) {
+        failure = 'Could not ask $_healthName for access: $e';
+      }
+      if (failure != null) {
         if (!mounted) return;
         setState(() {
           _healthBusy = false;
-          _healthNote =
-              'Access was not granted. You can allow it in $_healthName '
-              'settings.';
+          _healthNote = failure;
         });
         return;
       }
@@ -312,8 +324,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           Text(
             'Read calories burned, weight and height from $_healthName and '
-            'show them next to what you eat. Wellbite only reads, never '
-            'writes, and the data stays on this device.',
+            'show them next to what you eat. Basic Health Tracker only reads, '
+            'never writes, and the data stays on this device.',
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,

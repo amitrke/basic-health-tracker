@@ -35,7 +35,10 @@ class OpenFoodFacts {
       },
     );
     final response = await _client
-        .get(uri, headers: {'User-Agent': 'Wellbite/1.0 (food logger)'})
+        .get(
+          uri,
+          headers: {'User-Agent': 'BasicHealthTracker/1.0 (food logger)'},
+        )
         .timeout(const Duration(seconds: 10));
     if (response.statusCode == 404) return null;
     if (response.statusCode != 200) {

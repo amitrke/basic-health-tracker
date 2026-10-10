@@ -64,7 +64,9 @@ abstract class HealthSource {
   Future<bool> isAvailable();
 
   /// Asks for read access. Apple does not say whether read access was granted,
-  /// so a true here only means the request went through.
+  /// so on iOS true only means the request went through, and false means it
+  /// failed outright (such as a build missing the HealthKit entitlement).
+  /// Throws when setup fails, so the reason can be shown.
   Future<bool> requestAccess();
 
   Future<EnergyBurned> energyBurned(DateTime day);
@@ -185,15 +187,11 @@ class PlatformHealthSource implements HealthSource {
   @override
   Future<bool> requestAccess() async {
     if (!_supported) return false;
-    try {
-      await _configure();
-      return await _health.requestAuthorization(
-        _allTypes,
-        permissions: List.filled(_allTypes.length, HealthDataAccess.READ),
-      );
-    } catch (_) {
-      return false;
-    }
+    await _configure();
+    return _health.requestAuthorization(
+      _allTypes,
+      permissions: List.filled(_allTypes.length, HealthDataAccess.READ),
+    );
   }
 
   @override

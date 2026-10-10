@@ -306,6 +306,25 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleVersion' \
             "$RUNNER_TEMP/Runner.xcarchive/Info.plist"
 
+      # Export keeps the entitlements the archived app was signed with, and an
+      # unsigned archive has none, so TestFlight builds shipped without
+      # HealthKit and iOS refused every Health request. An ad-hoc signature
+      # needs no certificate and carries Runner.entitlements through to export.
+      - name: Attach entitlements to the archive
+        if: env.HAS_ASC_KEY == 'true'
+        run: |
+          app="$RUNNER_TEMP/Runner.xcarchive/Products/Applications/Runner.app"
+          if [ -d "$app/Frameworks" ]; then
+            find "$app/Frameworks" -maxdepth 1 \( -name '*.framework' -o -name '*.dylib' \) \
+              -exec codesign --force --sign - {} \;
+          fi
+          codesign --force --sign - --entitlements ios/Runner/Runner.entitlements "$app"
+          codesign -d --entitlements - --xml "$app" > "$RUNNER_TEMP/entitlements.xml"
+          if ! grep -q com.apple.developer.healthkit "$RUNNER_TEMP/entitlements.xml"; then
+            echo "::error::The archived app has no HealthKit entitlement."
+            exit 1
+          fi
+
       # ios/ExportOptions.plist sets destination=upload, so this both signs for
       # distribution and sends the build; its exit status is the result.
       # Cloud-managed signing needs the API key to have the Admin role.
