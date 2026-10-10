@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../data/database.dart';
+import '../services/health_service.dart';
 import '../services/services.dart';
 import 'add_food_sheet.dart';
 import 'settings_screen.dart';
@@ -16,8 +17,44 @@ class DayScreen extends StatefulWidget {
   State<DayScreen> createState() => _DayScreenState();
 }
 
-class _DayScreenState extends State<DayScreen> {
+class _DayScreenState extends State<DayScreen> with WidgetsBindingObserver {
   late DateTime _day = _today();
+
+  /// Null when health data is off, unavailable or has nothing for the day.
+  Future<EnergyBurned?> _burned = Future.value();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refreshBurned();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // Today's total keeps growing, so reread it when the app comes back.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) setState(_refreshBurned);
+  }
+
+  void _refreshBurned() {
+    final day = _day;
+    _burned = () async {
+      try {
+        if (!await widget.services.healthPrefs.readEnabled()) return null;
+        final burned = await widget.services.health.energyBurned(day);
+        return burned.isEmpty ? null : burned;
+      } catch (_) {
+        // Health is a bonus; the food log must work without it.
+        return null;
+      }
+    }();
+  }
 
   static DateTime _today() {
     final now = DateTime.now();
@@ -26,8 +63,13 @@ class _DayScreenState extends State<DayScreen> {
 
   bool get _isToday => _day == _today();
 
+  void _setDay(DateTime day) => setState(() {
+    _day = day;
+    _refreshBurned();
+  });
+
   void _shift(int days) =>
-      setState(() => _day = DateTime(_day.year, _day.month, _day.day + days));
+      _setDay(DateTime(_day.year, _day.month, _day.day + days));
 
   Future<void> _pickDay() async {
     final picked = await showDatePicker(
@@ -37,7 +79,7 @@ class _DayScreenState extends State<DayScreen> {
       lastDate: _today(),
     );
     if (picked != null) {
-      setState(() => _day = DateTime(picked.year, picked.month, picked.day));
+      _setDay(DateTime(picked.year, picked.month, picked.day));
     }
   }
 
@@ -128,11 +170,14 @@ class _DayScreenState extends State<DayScreen> {
           IconButton(
             tooltip: 'Settings',
             icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => SettingsScreen(services: widget.services),
-              ),
-            ),
+            onPressed: () async {
+              await Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => SettingsScreen(services: widget.services),
+                ),
+              );
+              if (mounted) setState(_refreshBurned);
+            },
           ),
         ],
       ),
@@ -144,19 +189,30 @@ class _DayScreenState extends State<DayScreen> {
               entries.isEmpty) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (entries.isEmpty) {
-            return const Center(child: Text('Nothing logged yet.'));
-          }
           final total = entries.fold<int>(0, (s, e) => s + (e.calories ?? 0));
           return ListView(
             padding: const EdgeInsets.only(bottom: 96),
             children: [
-              ListTile(
-                title: const Text('Total calories'),
-                trailing: Text(
-                  '$total kcal',
-                  style: Theme.of(context).textTheme.titleMedium,
+              if (entries.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(child: Text('Nothing logged yet.')),
+                )
+              else
+                ListTile(
+                  title: const Text('Total calories'),
+                  trailing: Text(
+                    '$total kcal',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                 ),
+              FutureBuilder<EnergyBurned?>(
+                future: _burned,
+                builder: (context, snap) {
+                  final burned = snap.data;
+                  if (burned == null) return const SizedBox.shrink();
+                  return _BurnedTile(burned: burned, eaten: total);
+                },
               ),
               const Divider(height: 1),
               for (final meal in MealType.values)
@@ -225,5 +281,33 @@ class _DayScreenState extends State<DayScreen> {
       if (e.notes != null && e.notes!.isNotEmpty) e.notes!,
     ];
     return parts.join(' · ');
+  }
+}
+
+/// Calories burned from Health, with what is left after the day's food.
+class _BurnedTile extends StatelessWidget {
+  const _BurnedTile({required this.burned, required this.eaten});
+
+  final EnergyBurned burned;
+  final int eaten;
+
+  @override
+  Widget build(BuildContext context) {
+    final out = burned.total ?? burned.active!;
+    final net = eaten - out;
+    return ListTile(
+      leading: const Icon(Icons.local_fire_department_outlined),
+      title: const Text('Calories burned'),
+      subtitle: Text(
+        [
+          if (burned.active != null) 'Active ${burned.active} kcal',
+          'Net ${net > 0 ? '+' : ''}$net kcal',
+        ].join(' · '),
+      ),
+      trailing: Text(
+        '$out kcal',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
   }
 }

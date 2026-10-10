@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 
 import 'ai_estimator.dart';
 import 'ai_settings.dart';
+import 'health_service.dart';
 import 'open_food_facts.dart';
 
 /// Where the AI provider settings (including API keys) live.
@@ -50,12 +51,20 @@ class MemoryAiSettingsStore implements AiSettingsStore {
 
 /// Network-backed helpers shared by the screens.
 class AppServices {
-  AppServices({AiSettingsStore? settingsStore, http.Client? client})
-    : settingsStore = settingsStore ?? SecureAiSettingsStore(),
-      client = client ?? http.Client();
+  AppServices({
+    AiSettingsStore? settingsStore,
+    http.Client? client,
+    HealthSource? health,
+    HealthPrefsStore? healthPrefs,
+  }) : settingsStore = settingsStore ?? SecureAiSettingsStore(),
+       client = client ?? http.Client(),
+       health = health ?? PlatformHealthSource(),
+       healthPrefs = healthPrefs ?? SecureHealthPrefsStore();
 
   final AiSettingsStore settingsStore;
   final http.Client client;
+  final HealthSource health;
+  final HealthPrefsStore healthPrefs;
 
   OpenFoodFacts get openFoodFacts => OpenFoodFacts(client);
 
