@@ -131,7 +131,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _save() async {
-    final typedKey = _key.text.trim();
+    final typedKey = cleanApiKey(_key.text);
+    if (!isValidApiKey(typedKey)) {
+      setState(
+        () => _error =
+            'That key has hidden or unusual characters. Copy it again from '
+            'the provider and paste it here.',
+      );
+      return;
+    }
     final config = AiConfig(
       provider: _provider,
       apiKey: typedKey.isNotEmpty ? typedKey : _saved.apiKey,

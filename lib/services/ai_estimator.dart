@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
@@ -22,9 +24,12 @@ class AiEstimate {
 }
 
 class AiEstimateException implements Exception {
-  const AiEstimateException(this.message);
+  const AiEstimateException(this.message, {this.fixInSettings = false});
 
   final String message;
+
+  /// The cause is the saved key or provider, so Settings is the way out.
+  final bool fixInSettings;
 
   @override
   String toString() => message;
@@ -62,6 +67,14 @@ class AiEstimator {
     final prompt = text.isEmpty ? 'Estimate the calories in this meal.' : text;
     final image = imageBytes == null ? null : base64Encode(imageBytes);
 
+    if (!isValidApiKey(config.apiKey.trim())) {
+      throw const AiEstimateException(
+        'The saved API key has hidden or unusual characters. Remove it in '
+        'Settings and paste it again.',
+        fixInSettings: true,
+      );
+    }
+
     final request = _isAnthropic
         ? _anthropicRequest(prompt, image, imageMediaType)
         : _openAiRequest(prompt, image, imageMediaType);
@@ -71,10 +84,8 @@ class AiEstimator {
       response = await _client
           .post(request.uri, headers: request.headers, body: request.body)
           .timeout(const Duration(seconds: 60));
-    } on Exception {
-      throw const AiEstimateException(
-        'Could not reach the estimator. Check your connection and settings.',
-      );
+    } on Exception catch (e) {
+      throw AiEstimateException(_describeFailure(e));
     }
 
     switch (response.statusCode) {
@@ -83,6 +94,7 @@ class AiEstimator {
       case 401 || 403:
         throw const AiEstimateException(
           'The API key was rejected. Check it in Settings.',
+          fixInSettings: true,
         );
       case 402:
         throw const AiEstimateException(
@@ -109,6 +121,26 @@ class AiEstimator {
       throw const AiEstimateException('Could not read the estimator reply.');
     }
     return parseEstimate(reply);
+  }
+
+  /// Says why a request never produced a response, so a bad key, a bad URL
+  /// and a dead connection do not all read the same.
+  static String _describeFailure(Exception e) {
+    return switch (e) {
+      TimeoutException() =>
+        'The estimator took too long to answer. Try again, or pick a faster '
+            'model in Settings.',
+      HandshakeException() || TlsException() =>
+        'The secure connection to the estimator failed (${e.runtimeType}).',
+      SocketException() =>
+        'No connection to the estimator. Check your internet.',
+      FormatException() || ArgumentError() =>
+        'The request could not be built. Check the base URL and key in '
+            'Settings.',
+      _ =>
+        'Could not reach the estimator (${e.runtimeType}). Check your '
+            'connection and settings.',
+    };
   }
 
   _Request _anthropicRequest(String prompt, String? image, String mediaType) {

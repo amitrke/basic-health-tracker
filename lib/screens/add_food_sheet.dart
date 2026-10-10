@@ -197,7 +197,10 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => AiEstimateSheet(services: widget.services),
+      builder: (_) => AiEstimateSheet(
+        services: widget.services,
+        initialDescription: _name.text,
+      ),
     );
     if (result == null || !mounted) return;
     setState(() {
@@ -296,6 +299,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
                   labelText: 'What did you eat?',
                 ),
                 onChanged: _onNameChanged,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Enter a food' : null,
               ),

@@ -10,9 +10,17 @@ import 'settings_screen.dart';
 /// Collects a description and/or photo, asks the estimator, and pops with the
 /// accepted [AiEstimate].
 class AiEstimateSheet extends StatefulWidget {
-  const AiEstimateSheet({super.key, required this.services});
+  const AiEstimateSheet({
+    super.key,
+    required this.services,
+    this.initialDescription,
+  });
 
   final AppServices services;
+
+  /// What was already typed in the food form. When present the estimate runs
+  /// straight away instead of asking for it again.
+  final String? initialDescription;
 
   @override
   State<AiEstimateSheet> createState() => _AiEstimateSheetState();
@@ -25,6 +33,20 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
   String? _error;
   bool _loading = false;
   bool _needsKey = false;
+
+  bool get _hasInitialDescription =>
+      widget.initialDescription?.trim().isNotEmpty ?? false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_hasInitialDescription) {
+      _description.text = widget.initialDescription!.trim();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _estimate();
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -72,7 +94,12 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
       );
       if (mounted) setState(() => _result = result);
     } on AiEstimateException catch (e) {
-      if (mounted) setState(() => _error = e.message);
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _needsKey = e.fixInSettings;
+        });
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -86,7 +113,10 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
     );
     if (!mounted) return;
     final estimator = await widget.services.aiEstimator();
-    if (mounted) setState(() => _needsKey = estimator == null);
+    if (!mounted) return;
+    setState(() => _needsKey = estimator == null);
+    // Back from Settings with a usable key: carry on without another tap.
+    if (estimator != null && _description.text.trim().isNotEmpty) _estimate();
   }
 
   @override
@@ -106,7 +136,8 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
           children: [
             TextField(
               controller: _description,
-              autofocus: true,
+              // No keyboard when the estimate is already running.
+              autofocus: !_hasInitialDescription,
               minLines: 1,
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
@@ -161,7 +192,11 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.key),
-                  title: const Text('Set up an AI provider to use estimates'),
+                  title: Text(
+                    _error == null
+                        ? 'Set up an AI provider to use estimates'
+                        : 'Open Settings to fix the AI key',
+                  ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: _openSettings,
                 ),
