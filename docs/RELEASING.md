@@ -97,3 +97,21 @@ Identifiers for both stores: `com.subnext.wellbite`, Apple team `BTSKP77HML`.
 Play's "what's new" comes from
 `fastlane/metadata/android/en-US/changelogs/v<version>.txt` (or `<build>.txt`),
 at most 500 characters. A run without notes still uploads, with a warning.
+
+## Health data (Apple Health, Health Connect)
+
+The app reads calories burned, weight and height, read-only. Both stores
+treat this as sensitive data, so before the first release that includes it:
+
+- **Apple:** the HealthKit capability must be enabled for `com.subnext.wellbite`
+  in the Apple Developer portal (Identifiers). The entitlement is already in
+  `ios/Runner/Runner.entitlements`. In App Store Connect, answer the App Privacy
+  questions for Health data (collected on device only, not linked or shared),
+  and have a privacy policy URL.
+- **Google Play:** complete the Health apps declaration and the Health Connect
+  permissions declaration in Play Console (App content). Declare the four
+  `READ_*` permissions in `AndroidManifest.xml`: active calories, total
+  calories, weight and height. A privacy policy URL is required, and it must
+  say the data is read on device and not sent anywhere.
+- Health Connect only releases data from the last 30 days before the user
+  granted access, so older weight or height records may not appear.
