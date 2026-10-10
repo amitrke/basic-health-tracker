@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/ai_estimator.dart';
 import '../services/services.dart';
+import '../theme.dart';
+import '../util/units.dart';
+import '../widgets/common.dart';
 import 'settings_screen.dart';
 
 /// Collects a description and/or photo, asks the estimator, and pops with the
@@ -108,7 +111,7 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
   Future<void> _openSettings() async {
     await Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => SettingsScreen(services: widget.services),
+        builder: (_) => AiSettingsScreen(services: widget.services),
       ),
     );
     if (!mounted) return;
@@ -122,6 +125,8 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
   @override
   Widget build(BuildContext context) {
     final result = _result;
+    final units = Units(widget.services.prefs.value);
+    final p = context.palette;
     return Padding(
       padding: EdgeInsets.fromLTRB(
         16,
@@ -135,6 +140,17 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Row(
+              children: [
+                Icon(Icons.auto_awesome, color: p.accent),
+                const SizedBox(width: 8),
+                Text(
+                  'Estimate with AI',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _description,
               onTapOutside: (_) =>
@@ -224,25 +240,62 @@ class _AiEstimateSheetState extends State<AiEstimateSheet> {
             ],
             if (result != null) ...[
               const SizedBox(height: 12),
-              for (final item in result.items)
-                ListTile(
-                  dense: true,
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(item.name),
-                  trailing: Text('${item.calories} kcal'),
+              SectionCard(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (final item in result.items)
+                      ListTile(
+                        dense: true,
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          item.name,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: MacroLine(
+                          protein: item.protein,
+                          carbs: item.carbs,
+                          fat: item.fat,
+                        ),
+                        trailing: Text(
+                          units.energy(item.calories),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    const Divider(height: 1),
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        'Total (estimate)',
+                        style: TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                      subtitle: MacroLine(
+                        protein: result.totalProtein,
+                        carbs: result.totalCarbs,
+                        fat: result.totalFat,
+                      ),
+                      trailing: Text(
+                        units.energy(result.totalCalories),
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    ),
+                    Text(
+                      'Estimates can be off. You can adjust the numbers before '
+                      'saving.',
+                      style: Theme.of(context).textTheme.bodySmall
+                          ?.copyWith(color: p.muted),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(result),
+                      child: const Text('Use this'),
+                    ),
+                  ],
                 ),
-              const Divider(height: 1),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                title: const Text('Total (estimate)'),
-                trailing: Text(
-                  '${result.totalCalories} kcal',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(result),
-                child: const Text('Use this'),
               ),
             ],
           ],

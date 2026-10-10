@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Wellbite uses the camera to scan food barcodes and photograph meals for calorie estimates.</string>
+	<string>Basic Health Tracker uses the camera to scan food barcodes and photograph meals for calorie estimates.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Wellbite can read a meal photo you choose to estimate its calories.</string>
+	<string>Basic Health Tracker can read a meal photo you choose to estimate its calories.</string>
 	<key>NSHealthShareUsageDescription</key>
-	<string>Wellbite reads your calories burned, weight and height from Apple Health to show them next to what you eat. It never writes to Health.</string>
+	<string>Basic Health Tracker reads your calories burned, weight and height from Apple Health to show them next to what you eat. It never writes to Health.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>Wellbite only reads from Apple Health. It never saves or changes anything in Health.</string>
+	<string>Basic Health Tracker only reads from Apple Health. It never saves or changes anything in Health.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>

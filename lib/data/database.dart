@@ -22,6 +22,11 @@ class FoodEntries extends Table {
 
   /// True when [calories] is a guess (portion size or AI), not a known value.
   BoolColumn get isEstimate => boolean().withDefault(const Constant(false))();
+
+  // Macros in grams, when known.
+  IntColumn get protein => integer().nullable()();
+  IntColumn get carbs => integer().nullable()();
+  IntColumn get fat => integer().nullable()();
 }
 
 /// Foods the user has logged before. Calories are for a normal portion and are
@@ -35,6 +40,11 @@ class SavedFoods extends Table {
   TextColumn get barcode => text().nullable()();
   IntColumn get useCount => integer().withDefault(const Constant(0))();
   DateTimeColumn get lastUsedAt => dateTime()();
+
+  // Macros in grams for a normal portion, when known.
+  IntColumn get protein => integer().nullable()();
+  IntColumn get carbs => integer().nullable()();
+  IntColumn get fat => integer().nullable()();
 }
 
 class MealTemplates extends Table {
@@ -48,15 +58,34 @@ class TemplateItems extends Table {
   IntColumn get templateId => integer().references(MealTemplates, #id)();
   TextColumn get name => text().withLength(min: 1, max: 200)();
   IntColumn get calories => integer().nullable()();
+  IntColumn get protein => integer().nullable()();
+  IntColumn get carbs => integer().nullable()();
+  IntColumn get fat => integer().nullable()();
 }
 
-@DriftDatabase(tables: [FoodEntries, SavedFoods, MealTemplates, TemplateItems])
+/// Weigh-ins entered in the app. Readings from Health are not copied here;
+/// the weight screen merges them in when Health is on.
+class WeightEntries extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get measuredAt => dateTime()();
+  RealColumn get kg => real()();
+}
+
+@DriftDatabase(
+  tables: [
+    FoodEntries,
+    SavedFoods,
+    MealTemplates,
+    TemplateItems,
+    WeightEntries,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor])
     : super(executor ?? driftDatabase(name: 'wellbite'));
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -65,11 +94,28 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await m.addColumn(foodEntries, foodEntries.portion);
         await m.addColumn(foodEntries, foodEntries.isEstimate);
+      }
+      if (from < 3) {
+        // Before the v2 backfill, which reads every food_entries column.
+        await m.addColumn(foodEntries, foodEntries.protein);
+        await m.addColumn(foodEntries, foodEntries.carbs);
+        await m.addColumn(foodEntries, foodEntries.fat);
+      }
+      if (from < 2) {
+        // Created from the current schema, so they already have macros.
         await m.createTable(savedFoods);
         await m.createTable(mealTemplates);
         await m.createTable(templateItems);
         await _backfillSavedFoods();
+      } else if (from < 3) {
+        await m.addColumn(savedFoods, savedFoods.protein);
+        await m.addColumn(savedFoods, savedFoods.carbs);
+        await m.addColumn(savedFoods, savedFoods.fat);
+        await m.addColumn(templateItems, templateItems.protein);
+        await m.addColumn(templateItems, templateItems.carbs);
+        await m.addColumn(templateItems, templateItems.fat);
       }
+      if (from < 3) await m.createTable(weightEntries);
     },
   );
 
@@ -83,6 +129,7 @@ class AppDatabase extends _$AppDatabase {
       await _remember(
         name: e.name,
         calories: e.calories,
+        macros: Macros.of(e),
         at: e.loggedAt,
         uses: 1,
       );
@@ -111,6 +158,17 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> deleteEntries(Iterable<int> ids) =>
       (delete(foodEntries)..where((e) => e.id.isIn(ids))).go();
+
+  /// Entries from the start of [from]'s day up to the end of [to]'s day.
+  Stream<List<FoodEntry>> watchRange(DateTime from, DateTime to) {
+    final start = DateTime(from.year, from.month, from.day);
+    final end = DateTime(to.year, to.month, to.day + 1);
+    return (select(foodEntries)
+          ..where((e) => e.loggedAt.isBiggerOrEqualValue(start))
+          ..where((e) => e.loggedAt.isSmallerThanValue(end))
+          ..orderBy([(e) => OrderingTerm.asc(e.loggedAt)]))
+        .watch();
+  }
 
   // --- Saved foods -------------------------------------------------------
 
@@ -161,6 +219,7 @@ class AppDatabase extends _$AppDatabase {
   Future<void> _remember({
     required String name,
     int? calories,
+    Macros macros = Macros.none,
     bool isEstimate = false,
     String? portionLabel,
     String? barcode,
@@ -178,6 +237,9 @@ class AppDatabase extends _$AppDatabase {
           portionLabel: Value(portionLabel),
           barcode: Value(barcode),
           useCount: Value(uses),
+          protein: Value(macros.protein),
+          carbs: Value(macros.carbs),
+          fat: Value(macros.fat),
         ),
       );
       return;
@@ -190,20 +252,26 @@ class AppDatabase extends _$AppDatabase {
             ? const Value.absent()
             : Value(portionLabel),
         barcode: barcode == null ? const Value.absent() : Value(barcode),
+        // Macros come as a set; a log that knows none keeps the stored ones.
+        protein: macros.isEmpty ? const Value.absent() : Value(macros.protein),
+        carbs: macros.isEmpty ? const Value.absent() : Value(macros.carbs),
+        fat: macros.isEmpty ? const Value.absent() : Value(macros.fat),
         useCount: Value(existing.useCount + uses),
         lastUsedAt: Value(at),
       ),
     );
   }
 
-  /// Logs a food and remembers it for next time. [baseCalories] is for a
-  /// normal portion; the stored entry is scaled by [portion]. With no
-  /// calories at all, a [portion] gives a rough meal-based estimate instead.
+  /// Logs a food and remembers it for next time. [baseCalories] and
+  /// [baseMacros] are for a normal portion; the stored entry is scaled by
+  /// [portion]. With no calories at all, a [portion] gives a rough meal-based
+  /// estimate instead.
   Future<int> logFood({
     required String name,
     required MealType meal,
     required DateTime at,
     int? baseCalories,
+    Macros baseMacros = Macros.none,
     bool baseIsEstimate = false,
     Portion? portion,
     String? notes,
@@ -214,6 +282,7 @@ class AppDatabase extends _$AppDatabase {
       await _remember(
         name: name,
         calories: baseCalories,
+        macros: baseMacros,
         isEstimate: baseIsEstimate,
         portionLabel: portionLabel,
         barcode: barcode,
@@ -225,6 +294,9 @@ class AppDatabase extends _$AppDatabase {
         portion: portion,
         meal: meal,
       );
+      final macros = baseMacros.scaled(
+        portionFactor[portion ?? Portion.normal]!,
+      );
       return addEntry(
         FoodEntriesCompanion.insert(
           name: name.trim(),
@@ -234,6 +306,9 @@ class AppDatabase extends _$AppDatabase {
           isEstimate: Value(result.isEstimate),
           portion: Value(portion),
           notes: Value(notes),
+          protein: Value(macros.protein),
+          carbs: Value(macros.carbs),
+          fat: Value(macros.fat),
         ),
       );
     });
@@ -251,6 +326,7 @@ class AppDatabase extends _$AppDatabase {
       meal: meal,
       at: at,
       baseCalories: food.calories,
+      baseMacros: Macros.of(food),
       baseIsEstimate: food.isEstimate,
       portion: portion,
       portionLabel: food.portionLabel,
@@ -286,6 +362,9 @@ class AppDatabase extends _$AppDatabase {
             templateId: id,
             name: e.name,
             calories: Value(e.calories),
+            protein: Value(e.protein),
+            carbs: Value(e.carbs),
+            fat: Value(e.fat),
           ),
         );
       }
@@ -315,6 +394,9 @@ class AppDatabase extends _$AppDatabase {
             meal: meal,
             at: at,
             baseCalories: saved?.calories ?? item.calories,
+            baseMacros: saved == null || Macros.of(saved).isEmpty
+                ? Macros.of(item)
+                : Macros.of(saved),
             baseIsEstimate: saved?.calories != null && saved!.isEstimate,
           ),
         );
@@ -327,4 +409,21 @@ class AppDatabase extends _$AppDatabase {
     await (delete(templateItems)..where((i) => i.templateId.equals(id))).go();
     await (delete(mealTemplates)..where((t) => t.id.equals(id))).go();
   }
+
+  // --- Weight ------------------------------------------------------------
+
+  /// Weigh-ins since [from], oldest first.
+  Stream<List<WeightEntry>> watchWeights({DateTime? from}) {
+    final q = select(weightEntries)
+      ..orderBy([(w) => OrderingTerm.asc(w.measuredAt)]);
+    if (from != null) q.where((w) => w.measuredAt.isBiggerOrEqualValue(from));
+    return q.watch();
+  }
+
+  Future<int> addWeight(double kg, DateTime at) =>
+      into(weightEntries)
+          .insert(WeightEntriesCompanion.insert(measuredAt: at, kg: kg));
+
+  Future<int> deleteWeight(int id) =>
+      (delete(weightEntries)..where((w) => w.id.equals(id))).go();
 }

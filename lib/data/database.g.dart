@@ -99,6 +99,35 @@ class $FoodEntriesTable extends FoodEntries
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _proteinMeta = const VerificationMeta(
+    'protein',
+  );
+  @override
+  late final GeneratedColumn<int> protein = GeneratedColumn<int>(
+    'protein',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _carbsMeta = const VerificationMeta('carbs');
+  @override
+  late final GeneratedColumn<int> carbs = GeneratedColumn<int>(
+    'carbs',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fatMeta = const VerificationMeta('fat');
+  @override
+  late final GeneratedColumn<int> fat = GeneratedColumn<int>(
+    'fat',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -109,6 +138,9 @@ class $FoodEntriesTable extends FoodEntries
     loggedAt,
     portion,
     isEstimate,
+    protein,
+    carbs,
+    fat,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -159,6 +191,24 @@ class $FoodEntriesTable extends FoodEntries
         isEstimate.isAcceptableOrUnknown(data['is_estimate']!, _isEstimateMeta),
       );
     }
+    if (data.containsKey('protein')) {
+      context.handle(
+        _proteinMeta,
+        protein.isAcceptableOrUnknown(data['protein']!, _proteinMeta),
+      );
+    }
+    if (data.containsKey('carbs')) {
+      context.handle(
+        _carbsMeta,
+        carbs.isAcceptableOrUnknown(data['carbs']!, _carbsMeta),
+      );
+    }
+    if (data.containsKey('fat')) {
+      context.handle(
+        _fatMeta,
+        fat.isAcceptableOrUnknown(data['fat']!, _fatMeta),
+      );
+    }
     return context;
   }
 
@@ -204,6 +254,18 @@ class $FoodEntriesTable extends FoodEntries
         DriftSqlType.bool,
         data['${effectivePrefix}is_estimate'],
       )!,
+      protein: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}protein'],
+      ),
+      carbs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}carbs'],
+      ),
+      fat: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fat'],
+      ),
     );
   }
 
@@ -231,6 +293,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
 
   /// True when [calories] is a guess (portion size or AI), not a known value.
   final bool isEstimate;
+  final int? protein;
+  final int? carbs;
+  final int? fat;
   const FoodEntry({
     required this.id,
     required this.name,
@@ -240,6 +305,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
     required this.loggedAt,
     this.portion,
     required this.isEstimate,
+    this.protein,
+    this.carbs,
+    this.fat,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -264,6 +332,15 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
       );
     }
     map['is_estimate'] = Variable<bool>(isEstimate);
+    if (!nullToAbsent || protein != null) {
+      map['protein'] = Variable<int>(protein);
+    }
+    if (!nullToAbsent || carbs != null) {
+      map['carbs'] = Variable<int>(carbs);
+    }
+    if (!nullToAbsent || fat != null) {
+      map['fat'] = Variable<int>(fat);
+    }
     return map;
   }
 
@@ -283,6 +360,13 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
           ? const Value.absent()
           : Value(portion),
       isEstimate: Value(isEstimate),
+      protein: protein == null && nullToAbsent
+          ? const Value.absent()
+          : Value(protein),
+      carbs: carbs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(carbs),
+      fat: fat == null && nullToAbsent ? const Value.absent() : Value(fat),
     );
   }
 
@@ -304,6 +388,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
         serializer.fromJson<int?>(json['portion']),
       ),
       isEstimate: serializer.fromJson<bool>(json['isEstimate']),
+      protein: serializer.fromJson<int?>(json['protein']),
+      carbs: serializer.fromJson<int?>(json['carbs']),
+      fat: serializer.fromJson<int?>(json['fat']),
     );
   }
   @override
@@ -322,6 +409,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
         $FoodEntriesTable.$converterportionn.toJson(portion),
       ),
       'isEstimate': serializer.toJson<bool>(isEstimate),
+      'protein': serializer.toJson<int?>(protein),
+      'carbs': serializer.toJson<int?>(carbs),
+      'fat': serializer.toJson<int?>(fat),
     };
   }
 
@@ -334,6 +424,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
     DateTime? loggedAt,
     Value<Portion?> portion = const Value.absent(),
     bool? isEstimate,
+    Value<int?> protein = const Value.absent(),
+    Value<int?> carbs = const Value.absent(),
+    Value<int?> fat = const Value.absent(),
   }) => FoodEntry(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -343,6 +436,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
     loggedAt: loggedAt ?? this.loggedAt,
     portion: portion.present ? portion.value : this.portion,
     isEstimate: isEstimate ?? this.isEstimate,
+    protein: protein.present ? protein.value : this.protein,
+    carbs: carbs.present ? carbs.value : this.carbs,
+    fat: fat.present ? fat.value : this.fat,
   );
   FoodEntry copyWithCompanion(FoodEntriesCompanion data) {
     return FoodEntry(
@@ -356,6 +452,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
       isEstimate: data.isEstimate.present
           ? data.isEstimate.value
           : this.isEstimate,
+      protein: data.protein.present ? data.protein.value : this.protein,
+      carbs: data.carbs.present ? data.carbs.value : this.carbs,
+      fat: data.fat.present ? data.fat.value : this.fat,
     );
   }
 
@@ -369,7 +468,10 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
           ..write('notes: $notes, ')
           ..write('loggedAt: $loggedAt, ')
           ..write('portion: $portion, ')
-          ..write('isEstimate: $isEstimate')
+          ..write('isEstimate: $isEstimate, ')
+          ..write('protein: $protein, ')
+          ..write('carbs: $carbs, ')
+          ..write('fat: $fat')
           ..write(')'))
         .toString();
   }
@@ -384,6 +486,9 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
     loggedAt,
     portion,
     isEstimate,
+    protein,
+    carbs,
+    fat,
   );
   @override
   bool operator ==(Object other) =>
@@ -396,7 +501,10 @@ class FoodEntry extends DataClass implements Insertable<FoodEntry> {
           other.notes == this.notes &&
           other.loggedAt == this.loggedAt &&
           other.portion == this.portion &&
-          other.isEstimate == this.isEstimate);
+          other.isEstimate == this.isEstimate &&
+          other.protein == this.protein &&
+          other.carbs == this.carbs &&
+          other.fat == this.fat);
 }
 
 class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
@@ -408,6 +516,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
   final Value<DateTime> loggedAt;
   final Value<Portion?> portion;
   final Value<bool> isEstimate;
+  final Value<int?> protein;
+  final Value<int?> carbs;
+  final Value<int?> fat;
   const FoodEntriesCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -417,6 +528,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     this.loggedAt = const Value.absent(),
     this.portion = const Value.absent(),
     this.isEstimate = const Value.absent(),
+    this.protein = const Value.absent(),
+    this.carbs = const Value.absent(),
+    this.fat = const Value.absent(),
   });
   FoodEntriesCompanion.insert({
     this.id = const Value.absent(),
@@ -427,6 +541,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     required DateTime loggedAt,
     this.portion = const Value.absent(),
     this.isEstimate = const Value.absent(),
+    this.protein = const Value.absent(),
+    this.carbs = const Value.absent(),
+    this.fat = const Value.absent(),
   }) : name = Value(name),
        mealType = Value(mealType),
        loggedAt = Value(loggedAt);
@@ -439,6 +556,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     Expression<DateTime>? loggedAt,
     Expression<int>? portion,
     Expression<bool>? isEstimate,
+    Expression<int>? protein,
+    Expression<int>? carbs,
+    Expression<int>? fat,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -449,6 +569,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
       if (loggedAt != null) 'logged_at': loggedAt,
       if (portion != null) 'portion': portion,
       if (isEstimate != null) 'is_estimate': isEstimate,
+      if (protein != null) 'protein': protein,
+      if (carbs != null) 'carbs': carbs,
+      if (fat != null) 'fat': fat,
     });
   }
 
@@ -461,6 +584,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     Value<DateTime>? loggedAt,
     Value<Portion?>? portion,
     Value<bool>? isEstimate,
+    Value<int?>? protein,
+    Value<int?>? carbs,
+    Value<int?>? fat,
   }) {
     return FoodEntriesCompanion(
       id: id ?? this.id,
@@ -471,6 +597,9 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
       loggedAt: loggedAt ?? this.loggedAt,
       portion: portion ?? this.portion,
       isEstimate: isEstimate ?? this.isEstimate,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
     );
   }
 
@@ -505,6 +634,15 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
     if (isEstimate.present) {
       map['is_estimate'] = Variable<bool>(isEstimate.value);
     }
+    if (protein.present) {
+      map['protein'] = Variable<int>(protein.value);
+    }
+    if (carbs.present) {
+      map['carbs'] = Variable<int>(carbs.value);
+    }
+    if (fat.present) {
+      map['fat'] = Variable<int>(fat.value);
+    }
     return map;
   }
 
@@ -518,7 +656,10 @@ class FoodEntriesCompanion extends UpdateCompanion<FoodEntry> {
           ..write('notes: $notes, ')
           ..write('loggedAt: $loggedAt, ')
           ..write('portion: $portion, ')
-          ..write('isEstimate: $isEstimate')
+          ..write('isEstimate: $isEstimate, ')
+          ..write('protein: $protein, ')
+          ..write('carbs: $carbs, ')
+          ..write('fat: $fat')
           ..write(')'))
         .toString();
   }
@@ -628,6 +769,35 @@ class $SavedFoodsTable extends SavedFoods
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _proteinMeta = const VerificationMeta(
+    'protein',
+  );
+  @override
+  late final GeneratedColumn<int> protein = GeneratedColumn<int>(
+    'protein',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _carbsMeta = const VerificationMeta('carbs');
+  @override
+  late final GeneratedColumn<int> carbs = GeneratedColumn<int>(
+    'carbs',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fatMeta = const VerificationMeta('fat');
+  @override
+  late final GeneratedColumn<int> fat = GeneratedColumn<int>(
+    'fat',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -638,6 +808,9 @@ class $SavedFoodsTable extends SavedFoods
     barcode,
     useCount,
     lastUsedAt,
+    protein,
+    carbs,
+    fat,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -706,6 +879,24 @@ class $SavedFoodsTable extends SavedFoods
     } else if (isInserting) {
       context.missing(_lastUsedAtMeta);
     }
+    if (data.containsKey('protein')) {
+      context.handle(
+        _proteinMeta,
+        protein.isAcceptableOrUnknown(data['protein']!, _proteinMeta),
+      );
+    }
+    if (data.containsKey('carbs')) {
+      context.handle(
+        _carbsMeta,
+        carbs.isAcceptableOrUnknown(data['carbs']!, _carbsMeta),
+      );
+    }
+    if (data.containsKey('fat')) {
+      context.handle(
+        _fatMeta,
+        fat.isAcceptableOrUnknown(data['fat']!, _fatMeta),
+      );
+    }
     return context;
   }
 
@@ -747,6 +938,18 @@ class $SavedFoodsTable extends SavedFoods
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_used_at'],
       )!,
+      protein: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}protein'],
+      ),
+      carbs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}carbs'],
+      ),
+      fat: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fat'],
+      ),
     );
   }
 
@@ -765,6 +968,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
   final String? barcode;
   final int useCount;
   final DateTime lastUsedAt;
+  final int? protein;
+  final int? carbs;
+  final int? fat;
   const SavedFood({
     required this.id,
     required this.name,
@@ -774,6 +980,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
     this.barcode,
     required this.useCount,
     required this.lastUsedAt,
+    this.protein,
+    this.carbs,
+    this.fat,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -792,6 +1001,15 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
     }
     map['use_count'] = Variable<int>(useCount);
     map['last_used_at'] = Variable<DateTime>(lastUsedAt);
+    if (!nullToAbsent || protein != null) {
+      map['protein'] = Variable<int>(protein);
+    }
+    if (!nullToAbsent || carbs != null) {
+      map['carbs'] = Variable<int>(carbs);
+    }
+    if (!nullToAbsent || fat != null) {
+      map['fat'] = Variable<int>(fat);
+    }
     return map;
   }
 
@@ -811,6 +1029,13 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
           : Value(barcode),
       useCount: Value(useCount),
       lastUsedAt: Value(lastUsedAt),
+      protein: protein == null && nullToAbsent
+          ? const Value.absent()
+          : Value(protein),
+      carbs: carbs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(carbs),
+      fat: fat == null && nullToAbsent ? const Value.absent() : Value(fat),
     );
   }
 
@@ -828,6 +1053,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
       barcode: serializer.fromJson<String?>(json['barcode']),
       useCount: serializer.fromJson<int>(json['useCount']),
       lastUsedAt: serializer.fromJson<DateTime>(json['lastUsedAt']),
+      protein: serializer.fromJson<int?>(json['protein']),
+      carbs: serializer.fromJson<int?>(json['carbs']),
+      fat: serializer.fromJson<int?>(json['fat']),
     );
   }
   @override
@@ -842,6 +1070,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
       'barcode': serializer.toJson<String?>(barcode),
       'useCount': serializer.toJson<int>(useCount),
       'lastUsedAt': serializer.toJson<DateTime>(lastUsedAt),
+      'protein': serializer.toJson<int?>(protein),
+      'carbs': serializer.toJson<int?>(carbs),
+      'fat': serializer.toJson<int?>(fat),
     };
   }
 
@@ -854,6 +1085,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
     Value<String?> barcode = const Value.absent(),
     int? useCount,
     DateTime? lastUsedAt,
+    Value<int?> protein = const Value.absent(),
+    Value<int?> carbs = const Value.absent(),
+    Value<int?> fat = const Value.absent(),
   }) => SavedFood(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -863,6 +1097,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
     barcode: barcode.present ? barcode.value : this.barcode,
     useCount: useCount ?? this.useCount,
     lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+    protein: protein.present ? protein.value : this.protein,
+    carbs: carbs.present ? carbs.value : this.carbs,
+    fat: fat.present ? fat.value : this.fat,
   );
   SavedFood copyWithCompanion(SavedFoodsCompanion data) {
     return SavedFood(
@@ -880,6 +1117,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
       lastUsedAt: data.lastUsedAt.present
           ? data.lastUsedAt.value
           : this.lastUsedAt,
+      protein: data.protein.present ? data.protein.value : this.protein,
+      carbs: data.carbs.present ? data.carbs.value : this.carbs,
+      fat: data.fat.present ? data.fat.value : this.fat,
     );
   }
 
@@ -893,7 +1133,10 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
           ..write('portionLabel: $portionLabel, ')
           ..write('barcode: $barcode, ')
           ..write('useCount: $useCount, ')
-          ..write('lastUsedAt: $lastUsedAt')
+          ..write('lastUsedAt: $lastUsedAt, ')
+          ..write('protein: $protein, ')
+          ..write('carbs: $carbs, ')
+          ..write('fat: $fat')
           ..write(')'))
         .toString();
   }
@@ -908,6 +1151,9 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
     barcode,
     useCount,
     lastUsedAt,
+    protein,
+    carbs,
+    fat,
   );
   @override
   bool operator ==(Object other) =>
@@ -920,7 +1166,10 @@ class SavedFood extends DataClass implements Insertable<SavedFood> {
           other.portionLabel == this.portionLabel &&
           other.barcode == this.barcode &&
           other.useCount == this.useCount &&
-          other.lastUsedAt == this.lastUsedAt);
+          other.lastUsedAt == this.lastUsedAt &&
+          other.protein == this.protein &&
+          other.carbs == this.carbs &&
+          other.fat == this.fat);
 }
 
 class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
@@ -932,6 +1181,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
   final Value<String?> barcode;
   final Value<int> useCount;
   final Value<DateTime> lastUsedAt;
+  final Value<int?> protein;
+  final Value<int?> carbs;
+  final Value<int?> fat;
   const SavedFoodsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -941,6 +1193,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     this.barcode = const Value.absent(),
     this.useCount = const Value.absent(),
     this.lastUsedAt = const Value.absent(),
+    this.protein = const Value.absent(),
+    this.carbs = const Value.absent(),
+    this.fat = const Value.absent(),
   });
   SavedFoodsCompanion.insert({
     this.id = const Value.absent(),
@@ -951,6 +1206,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     this.barcode = const Value.absent(),
     this.useCount = const Value.absent(),
     required DateTime lastUsedAt,
+    this.protein = const Value.absent(),
+    this.carbs = const Value.absent(),
+    this.fat = const Value.absent(),
   }) : name = Value(name),
        lastUsedAt = Value(lastUsedAt);
   static Insertable<SavedFood> custom({
@@ -962,6 +1220,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     Expression<String>? barcode,
     Expression<int>? useCount,
     Expression<DateTime>? lastUsedAt,
+    Expression<int>? protein,
+    Expression<int>? carbs,
+    Expression<int>? fat,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -972,6 +1233,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
       if (barcode != null) 'barcode': barcode,
       if (useCount != null) 'use_count': useCount,
       if (lastUsedAt != null) 'last_used_at': lastUsedAt,
+      if (protein != null) 'protein': protein,
+      if (carbs != null) 'carbs': carbs,
+      if (fat != null) 'fat': fat,
     });
   }
 
@@ -984,6 +1248,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     Value<String?>? barcode,
     Value<int>? useCount,
     Value<DateTime>? lastUsedAt,
+    Value<int?>? protein,
+    Value<int?>? carbs,
+    Value<int?>? fat,
   }) {
     return SavedFoodsCompanion(
       id: id ?? this.id,
@@ -994,6 +1261,9 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
       barcode: barcode ?? this.barcode,
       useCount: useCount ?? this.useCount,
       lastUsedAt: lastUsedAt ?? this.lastUsedAt,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
     );
   }
 
@@ -1024,6 +1294,15 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
     if (lastUsedAt.present) {
       map['last_used_at'] = Variable<DateTime>(lastUsedAt.value);
     }
+    if (protein.present) {
+      map['protein'] = Variable<int>(protein.value);
+    }
+    if (carbs.present) {
+      map['carbs'] = Variable<int>(carbs.value);
+    }
+    if (fat.present) {
+      map['fat'] = Variable<int>(fat.value);
+    }
     return map;
   }
 
@@ -1037,7 +1316,10 @@ class SavedFoodsCompanion extends UpdateCompanion<SavedFood> {
           ..write('portionLabel: $portionLabel, ')
           ..write('barcode: $barcode, ')
           ..write('useCount: $useCount, ')
-          ..write('lastUsedAt: $lastUsedAt')
+          ..write('lastUsedAt: $lastUsedAt, ')
+          ..write('protein: $protein, ')
+          ..write('carbs: $carbs, ')
+          ..write('fat: $fat')
           ..write(')'))
         .toString();
   }
@@ -1359,8 +1641,45 @@ class $TemplateItemsTable extends TemplateItems
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _proteinMeta = const VerificationMeta(
+    'protein',
+  );
   @override
-  List<GeneratedColumn> get $columns => [id, templateId, name, calories];
+  late final GeneratedColumn<int> protein = GeneratedColumn<int>(
+    'protein',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _carbsMeta = const VerificationMeta('carbs');
+  @override
+  late final GeneratedColumn<int> carbs = GeneratedColumn<int>(
+    'carbs',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _fatMeta = const VerificationMeta('fat');
+  @override
+  late final GeneratedColumn<int> fat = GeneratedColumn<int>(
+    'fat',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    templateId,
+    name,
+    calories,
+    protein,
+    carbs,
+    fat,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1398,6 +1717,24 @@ class $TemplateItemsTable extends TemplateItems
         calories.isAcceptableOrUnknown(data['calories']!, _caloriesMeta),
       );
     }
+    if (data.containsKey('protein')) {
+      context.handle(
+        _proteinMeta,
+        protein.isAcceptableOrUnknown(data['protein']!, _proteinMeta),
+      );
+    }
+    if (data.containsKey('carbs')) {
+      context.handle(
+        _carbsMeta,
+        carbs.isAcceptableOrUnknown(data['carbs']!, _carbsMeta),
+      );
+    }
+    if (data.containsKey('fat')) {
+      context.handle(
+        _fatMeta,
+        fat.isAcceptableOrUnknown(data['fat']!, _fatMeta),
+      );
+    }
     return context;
   }
 
@@ -1423,6 +1760,18 @@ class $TemplateItemsTable extends TemplateItems
         DriftSqlType.int,
         data['${effectivePrefix}calories'],
       ),
+      protein: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}protein'],
+      ),
+      carbs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}carbs'],
+      ),
+      fat: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}fat'],
+      ),
     );
   }
 
@@ -1437,11 +1786,17 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
   final int templateId;
   final String name;
   final int? calories;
+  final int? protein;
+  final int? carbs;
+  final int? fat;
   const TemplateItem({
     required this.id,
     required this.templateId,
     required this.name,
     this.calories,
+    this.protein,
+    this.carbs,
+    this.fat,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1451,6 +1806,15 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
     map['name'] = Variable<String>(name);
     if (!nullToAbsent || calories != null) {
       map['calories'] = Variable<int>(calories);
+    }
+    if (!nullToAbsent || protein != null) {
+      map['protein'] = Variable<int>(protein);
+    }
+    if (!nullToAbsent || carbs != null) {
+      map['carbs'] = Variable<int>(carbs);
+    }
+    if (!nullToAbsent || fat != null) {
+      map['fat'] = Variable<int>(fat);
     }
     return map;
   }
@@ -1463,6 +1827,13 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
       calories: calories == null && nullToAbsent
           ? const Value.absent()
           : Value(calories),
+      protein: protein == null && nullToAbsent
+          ? const Value.absent()
+          : Value(protein),
+      carbs: carbs == null && nullToAbsent
+          ? const Value.absent()
+          : Value(carbs),
+      fat: fat == null && nullToAbsent ? const Value.absent() : Value(fat),
     );
   }
 
@@ -1476,6 +1847,9 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
       templateId: serializer.fromJson<int>(json['templateId']),
       name: serializer.fromJson<String>(json['name']),
       calories: serializer.fromJson<int?>(json['calories']),
+      protein: serializer.fromJson<int?>(json['protein']),
+      carbs: serializer.fromJson<int?>(json['carbs']),
+      fat: serializer.fromJson<int?>(json['fat']),
     );
   }
   @override
@@ -1486,6 +1860,9 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
       'templateId': serializer.toJson<int>(templateId),
       'name': serializer.toJson<String>(name),
       'calories': serializer.toJson<int?>(calories),
+      'protein': serializer.toJson<int?>(protein),
+      'carbs': serializer.toJson<int?>(carbs),
+      'fat': serializer.toJson<int?>(fat),
     };
   }
 
@@ -1494,11 +1871,17 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
     int? templateId,
     String? name,
     Value<int?> calories = const Value.absent(),
+    Value<int?> protein = const Value.absent(),
+    Value<int?> carbs = const Value.absent(),
+    Value<int?> fat = const Value.absent(),
   }) => TemplateItem(
     id: id ?? this.id,
     templateId: templateId ?? this.templateId,
     name: name ?? this.name,
     calories: calories.present ? calories.value : this.calories,
+    protein: protein.present ? protein.value : this.protein,
+    carbs: carbs.present ? carbs.value : this.carbs,
+    fat: fat.present ? fat.value : this.fat,
   );
   TemplateItem copyWithCompanion(TemplateItemsCompanion data) {
     return TemplateItem(
@@ -1508,6 +1891,9 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
           : this.templateId,
       name: data.name.present ? data.name.value : this.name,
       calories: data.calories.present ? data.calories.value : this.calories,
+      protein: data.protein.present ? data.protein.value : this.protein,
+      carbs: data.carbs.present ? data.carbs.value : this.carbs,
+      fat: data.fat.present ? data.fat.value : this.fat,
     );
   }
 
@@ -1517,13 +1903,17 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
           ..write('id: $id, ')
           ..write('templateId: $templateId, ')
           ..write('name: $name, ')
-          ..write('calories: $calories')
+          ..write('calories: $calories, ')
+          ..write('protein: $protein, ')
+          ..write('carbs: $carbs, ')
+          ..write('fat: $fat')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, templateId, name, calories);
+  int get hashCode =>
+      Object.hash(id, templateId, name, calories, protein, carbs, fat);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1531,7 +1921,10 @@ class TemplateItem extends DataClass implements Insertable<TemplateItem> {
           other.id == this.id &&
           other.templateId == this.templateId &&
           other.name == this.name &&
-          other.calories == this.calories);
+          other.calories == this.calories &&
+          other.protein == this.protein &&
+          other.carbs == this.carbs &&
+          other.fat == this.fat);
 }
 
 class TemplateItemsCompanion extends UpdateCompanion<TemplateItem> {
@@ -1539,17 +1932,26 @@ class TemplateItemsCompanion extends UpdateCompanion<TemplateItem> {
   final Value<int> templateId;
   final Value<String> name;
   final Value<int?> calories;
+  final Value<int?> protein;
+  final Value<int?> carbs;
+  final Value<int?> fat;
   const TemplateItemsCompanion({
     this.id = const Value.absent(),
     this.templateId = const Value.absent(),
     this.name = const Value.absent(),
     this.calories = const Value.absent(),
+    this.protein = const Value.absent(),
+    this.carbs = const Value.absent(),
+    this.fat = const Value.absent(),
   });
   TemplateItemsCompanion.insert({
     this.id = const Value.absent(),
     required int templateId,
     required String name,
     this.calories = const Value.absent(),
+    this.protein = const Value.absent(),
+    this.carbs = const Value.absent(),
+    this.fat = const Value.absent(),
   }) : templateId = Value(templateId),
        name = Value(name);
   static Insertable<TemplateItem> custom({
@@ -1557,12 +1959,18 @@ class TemplateItemsCompanion extends UpdateCompanion<TemplateItem> {
     Expression<int>? templateId,
     Expression<String>? name,
     Expression<int>? calories,
+    Expression<int>? protein,
+    Expression<int>? carbs,
+    Expression<int>? fat,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (templateId != null) 'template_id': templateId,
       if (name != null) 'name': name,
       if (calories != null) 'calories': calories,
+      if (protein != null) 'protein': protein,
+      if (carbs != null) 'carbs': carbs,
+      if (fat != null) 'fat': fat,
     });
   }
 
@@ -1571,12 +1979,18 @@ class TemplateItemsCompanion extends UpdateCompanion<TemplateItem> {
     Value<int>? templateId,
     Value<String>? name,
     Value<int?>? calories,
+    Value<int?>? protein,
+    Value<int?>? carbs,
+    Value<int?>? fat,
   }) {
     return TemplateItemsCompanion(
       id: id ?? this.id,
       templateId: templateId ?? this.templateId,
       name: name ?? this.name,
       calories: calories ?? this.calories,
+      protein: protein ?? this.protein,
+      carbs: carbs ?? this.carbs,
+      fat: fat ?? this.fat,
     );
   }
 
@@ -1595,6 +2009,15 @@ class TemplateItemsCompanion extends UpdateCompanion<TemplateItem> {
     if (calories.present) {
       map['calories'] = Variable<int>(calories.value);
     }
+    if (protein.present) {
+      map['protein'] = Variable<int>(protein.value);
+    }
+    if (carbs.present) {
+      map['carbs'] = Variable<int>(carbs.value);
+    }
+    if (fat.present) {
+      map['fat'] = Variable<int>(fat.value);
+    }
     return map;
   }
 
@@ -1604,7 +2027,258 @@ class TemplateItemsCompanion extends UpdateCompanion<TemplateItem> {
           ..write('id: $id, ')
           ..write('templateId: $templateId, ')
           ..write('name: $name, ')
-          ..write('calories: $calories')
+          ..write('calories: $calories, ')
+          ..write('protein: $protein, ')
+          ..write('carbs: $carbs, ')
+          ..write('fat: $fat')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $WeightEntriesTable extends WeightEntries
+    with TableInfo<$WeightEntriesTable, WeightEntry> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $WeightEntriesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _measuredAtMeta = const VerificationMeta(
+    'measuredAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> measuredAt = GeneratedColumn<DateTime>(
+    'measured_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _kgMeta = const VerificationMeta('kg');
+  @override
+  late final GeneratedColumn<double> kg = GeneratedColumn<double>(
+    'kg',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, measuredAt, kg];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'weight_entries';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<WeightEntry> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('measured_at')) {
+      context.handle(
+        _measuredAtMeta,
+        measuredAt.isAcceptableOrUnknown(data['measured_at']!, _measuredAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_measuredAtMeta);
+    }
+    if (data.containsKey('kg')) {
+      context.handle(_kgMeta, kg.isAcceptableOrUnknown(data['kg']!, _kgMeta));
+    } else if (isInserting) {
+      context.missing(_kgMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  WeightEntry map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return WeightEntry(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      measuredAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}measured_at'],
+      )!,
+      kg: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}kg'],
+      )!,
+    );
+  }
+
+  @override
+  $WeightEntriesTable createAlias(String alias) {
+    return $WeightEntriesTable(attachedDatabase, alias);
+  }
+}
+
+class WeightEntry extends DataClass implements Insertable<WeightEntry> {
+  final int id;
+  final DateTime measuredAt;
+  final double kg;
+  const WeightEntry({
+    required this.id,
+    required this.measuredAt,
+    required this.kg,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['measured_at'] = Variable<DateTime>(measuredAt);
+    map['kg'] = Variable<double>(kg);
+    return map;
+  }
+
+  WeightEntriesCompanion toCompanion(bool nullToAbsent) {
+    return WeightEntriesCompanion(
+      id: Value(id),
+      measuredAt: Value(measuredAt),
+      kg: Value(kg),
+    );
+  }
+
+  factory WeightEntry.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return WeightEntry(
+      id: serializer.fromJson<int>(json['id']),
+      measuredAt: serializer.fromJson<DateTime>(json['measuredAt']),
+      kg: serializer.fromJson<double>(json['kg']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'measuredAt': serializer.toJson<DateTime>(measuredAt),
+      'kg': serializer.toJson<double>(kg),
+    };
+  }
+
+  WeightEntry copyWith({int? id, DateTime? measuredAt, double? kg}) =>
+      WeightEntry(
+        id: id ?? this.id,
+        measuredAt: measuredAt ?? this.measuredAt,
+        kg: kg ?? this.kg,
+      );
+  WeightEntry copyWithCompanion(WeightEntriesCompanion data) {
+    return WeightEntry(
+      id: data.id.present ? data.id.value : this.id,
+      measuredAt: data.measuredAt.present
+          ? data.measuredAt.value
+          : this.measuredAt,
+      kg: data.kg.present ? data.kg.value : this.kg,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeightEntry(')
+          ..write('id: $id, ')
+          ..write('measuredAt: $measuredAt, ')
+          ..write('kg: $kg')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, measuredAt, kg);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is WeightEntry &&
+          other.id == this.id &&
+          other.measuredAt == this.measuredAt &&
+          other.kg == this.kg);
+}
+
+class WeightEntriesCompanion extends UpdateCompanion<WeightEntry> {
+  final Value<int> id;
+  final Value<DateTime> measuredAt;
+  final Value<double> kg;
+  const WeightEntriesCompanion({
+    this.id = const Value.absent(),
+    this.measuredAt = const Value.absent(),
+    this.kg = const Value.absent(),
+  });
+  WeightEntriesCompanion.insert({
+    this.id = const Value.absent(),
+    required DateTime measuredAt,
+    required double kg,
+  }) : measuredAt = Value(measuredAt),
+       kg = Value(kg);
+  static Insertable<WeightEntry> custom({
+    Expression<int>? id,
+    Expression<DateTime>? measuredAt,
+    Expression<double>? kg,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (measuredAt != null) 'measured_at': measuredAt,
+      if (kg != null) 'kg': kg,
+    });
+  }
+
+  WeightEntriesCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? measuredAt,
+    Value<double>? kg,
+  }) {
+    return WeightEntriesCompanion(
+      id: id ?? this.id,
+      measuredAt: measuredAt ?? this.measuredAt,
+      kg: kg ?? this.kg,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (measuredAt.present) {
+      map['measured_at'] = Variable<DateTime>(measuredAt.value);
+    }
+    if (kg.present) {
+      map['kg'] = Variable<double>(kg.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('WeightEntriesCompanion(')
+          ..write('id: $id, ')
+          ..write('measuredAt: $measuredAt, ')
+          ..write('kg: $kg')
           ..write(')'))
         .toString();
   }
@@ -1617,6 +2291,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SavedFoodsTable savedFoods = $SavedFoodsTable(this);
   late final $MealTemplatesTable mealTemplates = $MealTemplatesTable(this);
   late final $TemplateItemsTable templateItems = $TemplateItemsTable(this);
+  late final $WeightEntriesTable weightEntries = $WeightEntriesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1626,6 +2301,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     savedFoods,
     mealTemplates,
     templateItems,
+    weightEntries,
   ];
 }
 
@@ -1639,6 +2315,9 @@ typedef $$FoodEntriesTableCreateCompanionBuilder =
       required DateTime loggedAt,
       Value<Portion?> portion,
       Value<bool> isEstimate,
+      Value<int?> protein,
+      Value<int?> carbs,
+      Value<int?> fat,
     });
 typedef $$FoodEntriesTableUpdateCompanionBuilder =
     FoodEntriesCompanion Function({
@@ -1650,6 +2329,9 @@ typedef $$FoodEntriesTableUpdateCompanionBuilder =
       Value<DateTime> loggedAt,
       Value<Portion?> portion,
       Value<bool> isEstimate,
+      Value<int?> protein,
+      Value<int?> carbs,
+      Value<int?> fat,
     });
 
 class $$FoodEntriesTableFilterComposer
@@ -1702,6 +2384,21 @@ class $$FoodEntriesTableFilterComposer
     column: $table.isEstimate,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<int> get protein => $composableBuilder(
+    column: $table.protein,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get carbs => $composableBuilder(
+    column: $table.carbs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fat => $composableBuilder(
+    column: $table.fat,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$FoodEntriesTableOrderingComposer
@@ -1752,6 +2449,21 @@ class $$FoodEntriesTableOrderingComposer
     column: $table.isEstimate,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get protein => $composableBuilder(
+    column: $table.protein,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get carbs => $composableBuilder(
+    column: $table.carbs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fat => $composableBuilder(
+    column: $table.fat,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FoodEntriesTableAnnotationComposer
@@ -1788,6 +2500,15 @@ class $$FoodEntriesTableAnnotationComposer
     column: $table.isEstimate,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get protein =>
+      $composableBuilder(column: $table.protein, builder: (column) => column);
+
+  GeneratedColumn<int> get carbs =>
+      $composableBuilder(column: $table.carbs, builder: (column) => column);
+
+  GeneratedColumn<int> get fat =>
+      $composableBuilder(column: $table.fat, builder: (column) => column);
 }
 
 class $$FoodEntriesTableTableManager
@@ -1829,6 +2550,9 @@ class $$FoodEntriesTableTableManager
                 Value<DateTime> loggedAt = const Value.absent(),
                 Value<Portion?> portion = const Value.absent(),
                 Value<bool> isEstimate = const Value.absent(),
+                Value<int?> protein = const Value.absent(),
+                Value<int?> carbs = const Value.absent(),
+                Value<int?> fat = const Value.absent(),
               }) => FoodEntriesCompanion(
                 id: id,
                 name: name,
@@ -1838,6 +2562,9 @@ class $$FoodEntriesTableTableManager
                 loggedAt: loggedAt,
                 portion: portion,
                 isEstimate: isEstimate,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
               ),
           createCompanionCallback:
               ({
@@ -1849,6 +2576,9 @@ class $$FoodEntriesTableTableManager
                 required DateTime loggedAt,
                 Value<Portion?> portion = const Value.absent(),
                 Value<bool> isEstimate = const Value.absent(),
+                Value<int?> protein = const Value.absent(),
+                Value<int?> carbs = const Value.absent(),
+                Value<int?> fat = const Value.absent(),
               }) => FoodEntriesCompanion.insert(
                 id: id,
                 name: name,
@@ -1858,6 +2588,9 @@ class $$FoodEntriesTableTableManager
                 loggedAt: loggedAt,
                 portion: portion,
                 isEstimate: isEstimate,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -1899,6 +2632,9 @@ typedef $$SavedFoodsTableCreateCompanionBuilder = SavedFoodsCompanion Function({
   Value<String?> barcode,
   Value<int> useCount,
   required DateTime lastUsedAt,
+  Value<int?> protein,
+  Value<int?> carbs,
+  Value<int?> fat,
 });
 typedef $$SavedFoodsTableUpdateCompanionBuilder = SavedFoodsCompanion Function({
   Value<int> id,
@@ -1909,6 +2645,9 @@ typedef $$SavedFoodsTableUpdateCompanionBuilder = SavedFoodsCompanion Function({
   Value<String?> barcode,
   Value<int> useCount,
   Value<DateTime> lastUsedAt,
+  Value<int?> protein,
+  Value<int?> carbs,
+  Value<int?> fat,
 });
 
 class $$SavedFoodsTableFilterComposer
@@ -1957,6 +2696,21 @@ class $$SavedFoodsTableFilterComposer
 
   ColumnFilters<DateTime> get lastUsedAt => $composableBuilder(
     column: $table.lastUsedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get protein => $composableBuilder(
+    column: $table.protein,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get carbs => $composableBuilder(
+    column: $table.carbs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fat => $composableBuilder(
+    column: $table.fat,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -2009,6 +2763,21 @@ class $$SavedFoodsTableOrderingComposer
     column: $table.lastUsedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get protein => $composableBuilder(
+    column: $table.protein,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get carbs => $composableBuilder(
+    column: $table.carbs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fat => $composableBuilder(
+    column: $table.fat,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SavedFoodsTableAnnotationComposer
@@ -2049,6 +2818,15 @@ class $$SavedFoodsTableAnnotationComposer
     column: $table.lastUsedAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get protein =>
+      $composableBuilder(column: $table.protein, builder: (column) => column);
+
+  GeneratedColumn<int> get carbs =>
+      $composableBuilder(column: $table.carbs, builder: (column) => column);
+
+  GeneratedColumn<int> get fat =>
+      $composableBuilder(column: $table.fat, builder: (column) => column);
 }
 
 class $$SavedFoodsTableTableManager
@@ -2090,6 +2868,9 @@ class $$SavedFoodsTableTableManager
                 Value<String?> barcode = const Value.absent(),
                 Value<int> useCount = const Value.absent(),
                 Value<DateTime> lastUsedAt = const Value.absent(),
+                Value<int?> protein = const Value.absent(),
+                Value<int?> carbs = const Value.absent(),
+                Value<int?> fat = const Value.absent(),
               }) => SavedFoodsCompanion(
                 id: id,
                 name: name,
@@ -2099,6 +2880,9 @@ class $$SavedFoodsTableTableManager
                 barcode: barcode,
                 useCount: useCount,
                 lastUsedAt: lastUsedAt,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
               ),
           createCompanionCallback:
               ({
@@ -2110,6 +2894,9 @@ class $$SavedFoodsTableTableManager
                 Value<String?> barcode = const Value.absent(),
                 Value<int> useCount = const Value.absent(),
                 required DateTime lastUsedAt,
+                Value<int?> protein = const Value.absent(),
+                Value<int?> carbs = const Value.absent(),
+                Value<int?> fat = const Value.absent(),
               }) => SavedFoodsCompanion.insert(
                 id: id,
                 name: name,
@@ -2119,6 +2906,9 @@ class $$SavedFoodsTableTableManager
                 barcode: barcode,
                 useCount: useCount,
                 lastUsedAt: lastUsedAt,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -2416,6 +3206,9 @@ typedef $$TemplateItemsTableCreateCompanionBuilder =
       required int templateId,
       required String name,
       Value<int?> calories,
+      Value<int?> protein,
+      Value<int?> carbs,
+      Value<int?> fat,
     });
 typedef $$TemplateItemsTableUpdateCompanionBuilder =
     TemplateItemsCompanion Function({
@@ -2423,6 +3216,9 @@ typedef $$TemplateItemsTableUpdateCompanionBuilder =
       Value<int> templateId,
       Value<String> name,
       Value<int?> calories,
+      Value<int?> protein,
+      Value<int?> carbs,
+      Value<int?> fat,
     });
 
 final class $$TemplateItemsTableReferences
@@ -2476,6 +3272,21 @@ class $$TemplateItemsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get protein => $composableBuilder(
+    column: $table.protein,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get carbs => $composableBuilder(
+    column: $table.carbs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get fat => $composableBuilder(
+    column: $table.fat,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$MealTemplatesTableFilterComposer get templateId {
     final $$MealTemplatesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -2524,6 +3335,21 @@ class $$TemplateItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get protein => $composableBuilder(
+    column: $table.protein,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get carbs => $composableBuilder(
+    column: $table.carbs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get fat => $composableBuilder(
+    column: $table.fat,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$MealTemplatesTableOrderingComposer get templateId {
     final $$MealTemplatesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -2565,6 +3391,15 @@ class $$TemplateItemsTableAnnotationComposer
 
   GeneratedColumn<int> get calories =>
       $composableBuilder(column: $table.calories, builder: (column) => column);
+
+  GeneratedColumn<int> get protein =>
+      $composableBuilder(column: $table.protein, builder: (column) => column);
+
+  GeneratedColumn<int> get carbs =>
+      $composableBuilder(column: $table.carbs, builder: (column) => column);
+
+  GeneratedColumn<int> get fat =>
+      $composableBuilder(column: $table.fat, builder: (column) => column);
 
   $$MealTemplatesTableAnnotationComposer get templateId {
     final $$MealTemplatesTableAnnotationComposer composer = $composerBuilder(
@@ -2622,11 +3457,17 @@ class $$TemplateItemsTableTableManager
                 Value<int> templateId = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<int?> calories = const Value.absent(),
+                Value<int?> protein = const Value.absent(),
+                Value<int?> carbs = const Value.absent(),
+                Value<int?> fat = const Value.absent(),
               }) => TemplateItemsCompanion(
                 id: id,
                 templateId: templateId,
                 name: name,
                 calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
               ),
           createCompanionCallback:
               ({
@@ -2634,11 +3475,17 @@ class $$TemplateItemsTableTableManager
                 required int templateId,
                 required String name,
                 Value<int?> calories = const Value.absent(),
+                Value<int?> protein = const Value.absent(),
+                Value<int?> carbs = const Value.absent(),
+                Value<int?> fat = const Value.absent(),
               }) => TemplateItemsCompanion.insert(
                 id: id,
                 templateId: templateId,
                 name: name,
                 calories: calories,
+                protein: protein,
+                carbs: carbs,
+                fat: fat,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -2705,6 +3552,168 @@ typedef $$TemplateItemsTableProcessedTableManager =
       TemplateItem,
       PrefetchHooks Function({bool templateId})
     >;
+typedef $$WeightEntriesTableCreateCompanionBuilder =
+    WeightEntriesCompanion Function({
+      Value<int> id,
+      required DateTime measuredAt,
+      required double kg,
+    });
+typedef $$WeightEntriesTableUpdateCompanionBuilder =
+    WeightEntriesCompanion Function({
+      Value<int> id,
+      Value<DateTime> measuredAt,
+      Value<double> kg,
+    });
+
+class $$WeightEntriesTableFilterComposer
+    extends Composer<_$AppDatabase, $WeightEntriesTable> {
+  $$WeightEntriesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get measuredAt => $composableBuilder(
+    column: $table.measuredAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get kg => $composableBuilder(
+    column: $table.kg,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$WeightEntriesTableOrderingComposer
+    extends Composer<_$AppDatabase, $WeightEntriesTable> {
+  $$WeightEntriesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get measuredAt => $composableBuilder(
+    column: $table.measuredAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get kg => $composableBuilder(
+    column: $table.kg,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$WeightEntriesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $WeightEntriesTable> {
+  $$WeightEntriesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get measuredAt => $composableBuilder(
+    column: $table.measuredAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get kg =>
+      $composableBuilder(column: $table.kg, builder: (column) => column);
+}
+
+class $$WeightEntriesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $WeightEntriesTable,
+          WeightEntry,
+          $$WeightEntriesTableFilterComposer,
+          $$WeightEntriesTableOrderingComposer,
+          $$WeightEntriesTableAnnotationComposer,
+          $$WeightEntriesTableCreateCompanionBuilder,
+          $$WeightEntriesTableUpdateCompanionBuilder,
+          (
+            WeightEntry,
+            BaseReferences<_$AppDatabase, $WeightEntriesTable, WeightEntry>,
+          ),
+          WeightEntry,
+          PrefetchHooks Function()
+        > {
+  $$WeightEntriesTableTableManager(_$AppDatabase db, $WeightEntriesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$WeightEntriesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$WeightEntriesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$WeightEntriesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<int> id = const Value.absent(),
+            Value<DateTime> measuredAt = const Value.absent(),
+            Value<double> kg = const Value.absent(),
+          }) => WeightEntriesCompanion(id: id, measuredAt: measuredAt, kg: kg),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required DateTime measuredAt,
+                required double kg,
+              }) => WeightEntriesCompanion.insert(
+                id: id,
+                measuredAt: measuredAt,
+                kg: kg,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$WeightEntriesTable, WeightEntry>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $WeightEntriesTable,
+                    WeightEntry
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$WeightEntriesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $WeightEntriesTable,
+      WeightEntry,
+      $$WeightEntriesTableFilterComposer,
+      $$WeightEntriesTableOrderingComposer,
+      $$WeightEntriesTableAnnotationComposer,
+      $$WeightEntriesTableCreateCompanionBuilder,
+      $$WeightEntriesTableUpdateCompanionBuilder,
+      (
+        WeightEntry,
+        BaseReferences<_$AppDatabase, $WeightEntriesTable, WeightEntry>,
+      ),
+      WeightEntry,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -2717,4 +3726,6 @@ class $AppDatabaseManager {
       $$MealTemplatesTableTableManager(_db, _db.mealTemplates);
   $$TemplateItemsTableTableManager get templateItems =>
       $$TemplateItemsTableTableManager(_db, _db.templateItems);
+  $$WeightEntriesTableTableManager get weightEntries =>
+      $$WeightEntriesTableTableManager(_db, _db.weightEntries);
 }

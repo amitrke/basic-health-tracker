@@ -1,12 +1,20 @@
 import 'package:drift/drift.dart' show Value;
 import 'package:drift/native.dart';
-import 'package:flutter/material.dart' show ActionChip;
+import 'package:flutter/material.dart' show ActionChip, Size;
 import 'package:flutter/widgets.dart' show SizedBox;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:wellbite/data/database.dart';
 import 'package:wellbite/main.dart';
 import 'package:wellbite/services/services.dart';
+import 'package:wellbite/services/user_prefs.dart';
+
+/// A phone-sized screen, so the whole Today page is on screen.
+void _phone(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1170, 2532);
+  tester.view.devicePixelRatio = 3;
+  addTearDown(tester.view.reset);
+}
 
 void main() {
   late AppDatabase db;
@@ -56,10 +64,14 @@ void main() {
   });
 
   testWidgets('empty day shows placeholder and add button', (tester) async {
+    _phone(tester);
     await tester.pumpWidget(
       BasicHealthTrackerApp(
         database: db,
-        services: AppServices(settingsStore: MemoryAiSettingsStore()),
+        services: AppServices(
+          settingsStore: MemoryAiSettingsStore(),
+          userPrefs: MemoryUserPrefsStore(),
+        ),
       ),
     );
     // Drift runs queries on real async I/O, which the fake clock won't advance.
@@ -77,6 +89,7 @@ void main() {
   testWidgets('one tap on a saved food logs it, and Undo removes it', (
     tester,
   ) async {
+    _phone(tester);
     await tester.runAsync(
       () => db.logFood(
         name: 'Oatmeal',
@@ -85,7 +98,10 @@ void main() {
         baseCalories: 300,
       ),
     );
-    final services = AppServices(settingsStore: MemoryAiSettingsStore());
+    final services = AppServices(
+      settingsStore: MemoryAiSettingsStore(),
+      userPrefs: MemoryUserPrefsStore(),
+    );
     await tester.pumpWidget(
       BasicHealthTrackerApp(database: db, services: services),
     );

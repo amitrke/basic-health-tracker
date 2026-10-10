@@ -70,6 +70,27 @@ abstract class HealthSource {
   Future<EnergyBurned> energyBurned(DateTime day);
 
   Future<BodyStats> bodyStats();
+
+  /// Weight readings since [from], oldest first. Empty when there are none
+  /// or access is missing.
+  Future<List<WeightReading>> weightHistory(DateTime from);
+}
+
+/// One weigh-in, from Health or typed into the app.
+class WeightReading {
+  const WeightReading({
+    required this.at,
+    required this.kg,
+    this.fromHealth = false,
+    this.id,
+  });
+
+  final DateTime at;
+  final double kg;
+  final bool fromHealth;
+
+  /// The app's own row id, so a typed entry can be deleted.
+  final int? id;
 }
 
 /// Where the on/off choice is remembered.
@@ -271,6 +292,32 @@ class PlatformHealthSource implements HealthSource {
       );
     } catch (_) {
       return const BodyStats();
+    }
+  }
+
+  @override
+  Future<List<WeightReading>> weightHistory(DateTime from) async {
+    if (!_supported) return const [];
+    try {
+      await _configure();
+      final points = await _health.getHealthDataFromTypes(
+        types: const [HealthDataType.WEIGHT],
+        startTime: from,
+        endTime: DateTime.now(),
+        preferredUnits: {HealthDataType.WEIGHT: HealthDataUnit.KILOGRAM},
+      );
+      final readings = [
+        for (final p in points)
+          if (p.value is NumericHealthValue)
+            WeightReading(
+              at: p.dateTo,
+              kg: (p.value as NumericHealthValue).numericValue.toDouble(),
+              fromHealth: true,
+            ),
+      ]..sort((a, b) => a.at.compareTo(b.at));
+      return readings;
+    } catch (_) {
+      return const [];
     }
   }
 }
