@@ -8,6 +8,7 @@ import 'screens/trends_screen.dart';
 import 'screens/weight_screen.dart';
 import 'services/services.dart';
 import 'theme.dart';
+import 'widgets/responsive.dart';
 
 void main() {
   runApp(
@@ -79,42 +80,64 @@ class _HomeShellState extends State<HomeShell> {
 
   void _open(int tab) => setState(() => _tab = tab);
 
+  static const _tabs = [
+    (Icons.home_outlined, Icons.home, 'Today'),
+    (Icons.restaurant_menu_outlined, Icons.restaurant_menu, 'Log'),
+    (Icons.monitor_weight_outlined, Icons.monitor_weight, 'Weight'),
+    (Icons.insights_outlined, Icons.insights, 'Trends'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final db = widget.database;
     final services = widget.services;
+    // Only the open tab is built, so each one reads fresh data on return.
+    final body = switch (_tab) {
+      0 => TodayScreen(database: db, services: services, onOpenTab: _open),
+      1 => LogScreen(database: db, services: services),
+      2 => WeightScreen(database: db, services: services),
+      _ => TrendsScreen(database: db, services: services),
+    };
+    final wide = MediaQuery.sizeOf(context).width >= Breakpoints.rail;
+    if (wide) {
+      return Scaffold(
+        body: Row(
+          children: [
+            SafeArea(
+              right: false,
+              child: NavigationRail(
+                selectedIndex: _tab,
+                onDestinationSelected: _open,
+                labelType: NavigationRailLabelType.all,
+                groupAlignment: -0.9,
+                destinations: [
+                  for (final (icon, selected, label) in _tabs)
+                    NavigationRailDestination(
+                      icon: Icon(icon),
+                      selectedIcon: Icon(selected),
+                      label: Text(label),
+                    ),
+                ],
+              ),
+            ),
+            const VerticalDivider(width: 1),
+            Expanded(child: body),
+          ],
+        ),
+      );
+    }
     return Scaffold(
-      // Only the open tab is built, so each one reads fresh data on return.
-      body: switch (_tab) {
-        0 => TodayScreen(database: db, services: services, onOpenTab: _open),
-        1 => LogScreen(database: db, services: services),
-        2 => WeightScreen(database: db, services: services),
-        _ => TrendsScreen(database: db, services: services),
-      },
+      body: body,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: _open,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Today',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.restaurant_menu_outlined),
-            selectedIcon: Icon(Icons.restaurant_menu),
-            label: 'Log',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.monitor_weight_outlined),
-            selectedIcon: Icon(Icons.monitor_weight),
-            label: 'Weight',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.insights_outlined),
-            selectedIcon: Icon(Icons.insights),
-            label: 'Trends',
-          ),
+        destinations: [
+          for (final (icon, selected, label) in _tabs)
+            NavigationDestination(
+              icon: Icon(icon),
+              selectedIcon: Icon(selected),
+              label: label,
+            ),
         ],
       ),
     );

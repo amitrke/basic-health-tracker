@@ -10,6 +10,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 import 'food_editor.dart';
 import 'settings_screen.dart';
 
@@ -98,89 +99,128 @@ class _TodayScreenState extends State<TodayScreen> with WidgetsBindingObserver {
               stream: _entries,
               builder: (context, snapshot) {
                 final entries = snapshot.data ?? const <FoodEntry>[];
-                return ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+                final header = Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                DateFormat('EEEE, MMM d')
-                                    .format(_day)
-                                    .toUpperCase(),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.6,
-                                  color: p.muted,
-                                ),
-                              ),
-                              Text(
-                                _greeting,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .headlineMedium,
-                              ),
-                            ],
-                          ),
-                        ),
-                        IconButton.filledTonal(
-                          tooltip: 'Settings',
-                          onPressed: _openSettings,
-                          style: IconButton.styleFrom(
-                            backgroundColor: p.accentSoft,
-                            foregroundColor: p.accent,
-                            minimumSize: const Size(48, 48),
-                          ),
-                          icon: const Icon(Icons.person_outline),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    FutureBuilder<EnergyBurned?>(
-                      future: _burned,
-                      builder: (context, snap) => _CaloriesCard(
-                        prefs: prefs,
-                        units: units,
-                        entries: entries,
-                        burned: snap.data,
-                        onViewLog: () => widget.onOpenTab(1),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _MacrosCard(prefs: prefs, entries: entries),
-                    const SizedBox(height: 12),
-                    _MealsCard(
-                      units: units,
-                      entries: entries,
-                      onOpenLog: () => widget.onOpenTab(1),
-                      onAdd: () => openFoodEditor(
-                        context,
-                        database: widget.database,
-                        services: widget.services,
-                        day: _day,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    StreamBuilder<List<WeightEntry>>(
-                      stream: _weights,
-                      builder: (context, app) =>
-                          FutureBuilder<List<WeightReading>>(
-                            future: _healthWeights,
-                            builder: (context, health) => _WeightCard(
-                              units: units,
-                              readings: mergeWeights(
-                                app.data ?? const [],
-                                health.data ?? const [],
-                              ),
-                              onTap: () => widget.onOpenTab(2),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            DateFormat('EEEE, MMM d')
+                                .format(_day)
+                                .toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.6,
+                              color: p.muted,
                             ),
                           ),
+                          Text(
+                            _greeting,
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton.filledTonal(
+                      tooltip: 'Settings',
+                      onPressed: _openSettings,
+                      style: IconButton.styleFrom(
+                        backgroundColor: p.accentSoft,
+                        foregroundColor: p.accent,
+                        minimumSize: const Size(48, 48),
+                      ),
+                      icon: const Icon(Icons.person_outline),
                     ),
                   ],
+                );
+                final calories = FutureBuilder<EnergyBurned?>(
+                  future: _burned,
+                  builder: (context, snap) => _CaloriesCard(
+                    prefs: prefs,
+                    units: units,
+                    entries: entries,
+                    burned: snap.data,
+                    onViewLog: () => widget.onOpenTab(1),
+                  ),
+                );
+                final macros = _MacrosCard(prefs: prefs, entries: entries);
+                final meals = _MealsCard(
+                  units: units,
+                  entries: entries,
+                  onOpenLog: () => widget.onOpenTab(1),
+                  onAdd: () => openFoodEditor(
+                    context,
+                    database: widget.database,
+                    services: widget.services,
+                    day: _day,
+                  ),
+                );
+                final weight = StreamBuilder<List<WeightEntry>>(
+                  stream: _weights,
+                  builder: (context, app) => FutureBuilder<List<WeightReading>>(
+                    future: _healthWeights,
+                    builder: (context, health) => _WeightCard(
+                      units: units,
+                      readings: mergeWeights(
+                        app.data ?? const [],
+                        health.data ?? const [],
+                      ),
+                      onTap: () => widget.onOpenTab(2),
+                    ),
+                  ),
+                );
+                return LayoutBuilder(
+                  builder: (context, box) {
+                    final wide = box.maxWidth >= Breakpoints.twoColumn;
+                    const gap = SizedBox(height: 12, width: 16);
+                    final side = sideInset(
+                      box.maxWidth,
+                      maxWidth: wide
+                          ? Breakpoints.wideContent
+                          : Breakpoints.content,
+                    );
+                    return ListView(
+                      padding: EdgeInsets.fromLTRB(side, 12, side, 96),
+                      children: [
+                        header,
+                        const SizedBox(height: 16),
+                        if (wide)
+                          // Calories and macros beside meals and weight, so a
+                          // landscape tablet shows the whole day at once.
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [calories, gap, macros],
+                                ),
+                              ),
+                              gap,
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [meals, gap, weight],
+                                ),
+                              ),
+                            ],
+                          )
+                        else ...[
+                          calories,
+                          gap,
+                          macros,
+                          gap,
+                          meals,
+                          gap,
+                          weight,
+                        ],
+                      ],
+                    );
+                  },
                 );
               },
             );

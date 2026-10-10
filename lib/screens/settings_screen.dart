@@ -10,6 +10,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 import 'goals_screen.dart';
 
 const _privacyUrl = 'https://amitrke.github.io/basic-health-tracker/';
@@ -178,9 +179,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final goals = GoalsScreen(services: _services);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
+      body: CenteredListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        top: 0,
+        bottom: 32,
         children: [
           const _SectionLabel('Goals'),
           Card(
@@ -562,9 +564,10 @@ class _AiSettingsScreenState extends State<AiSettingsScreen> {
         FocusManager.instance.primaryFocus?.unfocus();
     return Scaffold(
       appBar: AppBar(title: const Text('AI estimates')),
-      body: ListView(
+      body: CenteredListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        top: 0,
+        bottom: 32,
         children: [
           Text(
             'Describe a meal or snap a photo and an AI model estimates the '

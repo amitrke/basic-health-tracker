@@ -8,6 +8,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 import 'food_editor.dart';
 
 /// The last seven days: calories against the goal and the macro split.
@@ -115,8 +116,9 @@ class _TrendsScreenState extends State<TrendsScreen> {
         1.1;
     final sel = _selected;
 
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+    return CenteredListView(
+      top: 4,
+      bottom: 32,
       children: [
         Row(
           children: [
