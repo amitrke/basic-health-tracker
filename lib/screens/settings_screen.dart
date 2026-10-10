@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/ai_settings.dart';
 import '../services/health_service.dart';
@@ -27,6 +28,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _healthBusy = false;
   String? _healthNote;
   BodyStats _body = const BodyStats();
+  final _age = TextEditingController();
+  Sex? _sex;
+
+  static const _privacyUrl = 'https://amitrke.github.io/basic-health-tracker/';
+
+  int? get _resting => restingKcal(
+    weightKg: _body.weightKg,
+    heightCm: _body.heightCm,
+    age: int.tryParse(_age.text.trim()),
+    sex: _sex,
+  );
+
+  Future<void> _saveProfile() async {
+    setState(() {});
+    final age = int.tryParse(_age.text.trim());
+    await widget.services.healthPrefs.writeProfile(
+      BodyProfile(
+        age: age != null && age > 0 && age < 120 ? age : null,
+        sex: _sex,
+      ),
+    );
+  }
 
   static String get _healthName =>
       Platform.isIOS ? 'Apple Health' : 'Health Connect';
@@ -59,6 +82,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _settings = s;
         _loaded = true;
         _select(s.active);
+      });
+    });
+    widget.services.healthPrefs.readProfile().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _age.text = p.age?.toString() ?? '';
+        _sex = p.sex;
       });
     });
     widget.services.healthPrefs.readEnabled().then((on) {
@@ -117,6 +147,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _key.dispose();
     _model.dispose();
     _baseUrl.dispose();
+    _age.dispose();
     super.dispose();
   }
 
@@ -131,7 +162,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _save() async {
-    final typedKey = _key.text.trim();
+    final typedKey = cleanApiKey(_key.text);
+    if (!isValidApiKey(typedKey)) {
+      setState(
+        () => _error =
+            'That key has hidden or unusual characters. Copy it again from '
+            'the provider and paste it here.',
+      );
+      return;
+    }
     final config = AiConfig(
       provider: _provider,
       apiKey: typedKey.isNotEmpty ? typedKey : _saved.apiKey,
@@ -176,6 +215,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.all(16),
         children: [
           Text('AI calorie estimates', style: theme.textTheme.titleMedium),
@@ -217,6 +257,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
           if (_provider.hasEditableBaseUrl) ...[
             TextField(
               controller: _baseUrl,
+              onTapOutside: (_) =>
+                  FocusManager.instance.primaryFocus?.unfocus(),
               keyboardType: TextInputType.url,
               autocorrect: false,
               decoration: const InputDecoration(
@@ -228,6 +270,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
           TextField(
             controller: _model,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             autocorrect: false,
             enableSuggestions: false,
             decoration: InputDecoration(
@@ -240,6 +283,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 12),
           TextField(
             controller: _key,
+            onTapOutside: (_) => FocusManager.instance.primaryFocus?.unfocus(),
             obscureText: true,
             autocorrect: false,
             enableSuggestions: false,
@@ -282,7 +326,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               _healthNote!,
               style: TextStyle(color: theme.colorScheme.error),
             ),
-          if (_healthOn)
+          if (_healthOn) ...[
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: const Icon(Icons.monitor_weight_outlined),
@@ -298,6 +342,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               subtitle: const Text('Latest values in Health'),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Health does not share your age or sex. Add them to estimate the '
+              'calories you burn at rest when Health only reports exercise.',
+              style: theme.textTheme.bodySmall,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _age,
+              keyboardType: TextInputType.number,
+              onTapOutside: (_) =>
+                  FocusManager.instance.primaryFocus?.unfocus(),
+              decoration: const InputDecoration(labelText: 'Age'),
+              onChanged: (_) => _saveProfile(),
+            ),
+            const SizedBox(height: 12),
+            SegmentedButton<Sex>(
+              emptySelectionAllowed: true,
+              segments: const [
+                ButtonSegment(value: Sex.female, label: Text('Female')),
+                ButtonSegment(value: Sex.male, label: Text('Male')),
+              ],
+              selected: {?_sex},
+              showSelectedIcon: false,
+              onSelectionChanged: (s) {
+                setState(() => _sex = s.firstOrNull);
+                _saveProfile();
+              },
+            ),
+            if (_resting != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'Resting burn about $_resting kcal a day.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+          ],
+          const SizedBox(height: 24),
+          const Divider(),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy policy'),
+            trailing: const Icon(Icons.open_in_new),
+            onTap: () => launchUrl(
+              Uri.parse(_privacyUrl),
+              mode: LaunchMode.externalApplication,
+            ),
+          ),
         ],
       ),
     );

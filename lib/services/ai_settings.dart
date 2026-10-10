@@ -140,3 +140,11 @@ class AiSettings {
     }
   }
 }
+
+/// Drops any whitespace from a pasted key. Keys never contain spaces, but a
+/// copied one often carries a trailing newline.
+String cleanApiKey(String raw) => raw.replaceAll(RegExp(r'\s'), '');
+
+/// Keys are plain printable ASCII. Anything else (a zero-width character from
+/// a web page, say) cannot go in an HTTP header and makes every request fail.
+bool isValidApiKey(String key) => RegExp(r'^[\x21-\x7E]*$').hasMatch(key);

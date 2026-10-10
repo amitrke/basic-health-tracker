@@ -197,9 +197,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => AiEstimateSheet(services: widget.services),
+      builder: (_) => AiEstimateSheet(
+        services: widget.services,
+        initialDescription: _name.text,
+      ),
     );
     if (result == null || !mounted) return;
+    // Closing the estimate sheet hands focus back to the name field, which
+    // would reopen the keyboard over the Save button.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() {
       if (_name.text.trim().isEmpty) _name.text = result.summary;
       _calories.text = result.totalCalories.toString();
@@ -270,6 +276,7 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
       child: Form(
         key: _formKey,
         child: SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -290,12 +297,15 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _name,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 autofocus: !_isEdit,
                 textCapitalization: TextCapitalization.sentences,
                 decoration: const InputDecoration(
                   labelText: 'What did you eat?',
                 ),
                 onChanged: _onNameChanged,
+                autovalidateMode: AutovalidateMode.onUserInteraction,
                 validator: (v) =>
                     (v == null || v.trim().isEmpty) ? 'Enter a food' : null,
               ),
@@ -321,6 +331,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _calories,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 keyboardType: TextInputType.number,
                 decoration: InputDecoration(
                   labelText: 'Calories (optional)',
@@ -394,6 +406,8 @@ class _AddFoodSheetState extends State<AddFoodSheet> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _notes,
+                onTapOutside: (_) =>
+                    FocusManager.instance.primaryFocus?.unfocus(),
                 decoration: const InputDecoration(
                   labelText: 'Notes (optional)',
                 ),

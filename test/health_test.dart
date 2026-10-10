@@ -37,6 +37,49 @@ void main() {
     expect(total, 350);
   });
 
+  test('restingKcal follows Mifflin-St Jeor and needs every input', () {
+    expect(
+      restingKcal(weightKg: 70, heightCm: 175, age: 30, sex: Sex.male),
+      1649,
+    );
+    expect(
+      restingKcal(weightKg: 60, heightCm: 165, age: 30, sex: Sex.female),
+      1320,
+    );
+    expect(restingKcal(weightKg: 70, heightCm: 175, age: 30), isNull);
+    expect(restingKcal(weightKg: 70, age: 30, sex: Sex.male), isNull);
+  });
+
+  testWidgets('with only active calories, resting burn is estimated', (
+    tester,
+  ) async {
+    final db = AppDatabase(NativeDatabase.memory());
+    final prefs = MemoryHealthPrefsStore(true);
+    await prefs.writeProfile(const BodyProfile(age: 30, sex: Sex.male));
+    await tester.pumpWidget(
+      BasicHealthTrackerApp(
+        database: db,
+        services: AppServices(
+          settingsStore: MemoryAiSettingsStore(),
+          health: FakeHealth(burned: const EnergyBurned(active: 300)),
+          healthPrefs: prefs,
+        ),
+      ),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 200)),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    // 70 kg, 175 cm, 30, male = 1649 resting, plus 300 active.
+    expect(find.text('~1949 kcal'), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 1));
+    await tester.runAsync(db.close);
+  });
+
   test('bestSourceTotal is null with no data', () {
     expect(bestSourceTotal(const []), isNull);
   });
