@@ -9,6 +9,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 
 enum _Range {
   week('1W', 7),
@@ -130,8 +131,9 @@ class _WeightScreenState extends State<WeightScreen> {
     final inRange = all.where((r) => r.at.isAfter(from)).toList();
     final latest = all.last;
     final shown = inRange.length >= 2 ? inRange : const <WeightReading>[];
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
+    return CenteredListView(
+      top: 4,
+      bottom: 32,
       children: [
         SectionCard(
           padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),

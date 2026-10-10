@@ -225,6 +225,20 @@ ThemeData buildTheme(Brightness brightness) {
         text.labelMedium?.copyWith(fontWeight: FontWeight.w700, color: p.ink),
       ),
     ),
+    navigationRailTheme: NavigationRailThemeData(
+      backgroundColor: p.card,
+      indicatorColor: p.accentSoft,
+      selectedIconTheme: IconThemeData(color: p.ink),
+      unselectedIconTheme: IconThemeData(color: p.muted),
+      selectedLabelTextStyle: text.labelMedium?.copyWith(
+        fontWeight: FontWeight.w700,
+        color: p.ink,
+      ),
+      unselectedLabelTextStyle: text.labelMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+        color: p.muted,
+      ),
+    ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: p.accent,
       foregroundColor: scheme.onPrimary,

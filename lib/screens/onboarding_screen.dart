@@ -9,6 +9,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 import 'goals_screen.dart';
 
 /// First-run setup: about you, a weight goal, Health, and a daily plan.
@@ -211,67 +212,73 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     };
     return Scaffold(
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
-              child: Row(
-                children: [
-                  IconButton(
-                    tooltip: 'Back',
-                    onPressed: _back,
-                    icon: const Icon(Icons.arrow_back),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Semantics(
-                      label: 'Step $_step of 4',
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(3),
-                        child: LinearProgressIndicator(
-                          value: _step / 4,
-                          minHeight: 6,
-                          color: p.accent,
-                          backgroundColor: p.line,
+        child: MaxWidth(
+          maxWidth: 560,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 20, 0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Back',
+                      onPressed: _back,
+                      icon: const Icon(Icons.arrow_back),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Semantics(
+                        label: 'Step $_step of 4',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(3),
+                          child: LinearProgressIndicator(
+                            value: _step / 4,
+                            minHeight: 6,
+                            color: p.accent,
+                            backgroundColor: p.line,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                keyboardDismissBehavior:
-                    ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(subtitle, style: TextStyle(color: p.muted, height: 1.4)),
-                  const SizedBox(height: 20),
-                  body,
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
                   ],
-                ],
+                ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: action,
-            ),
-          ],
+              Expanded(
+                child: ListView(
+                  keyboardDismissBehavior:
+                      ScrollViewKeyboardDismissBehavior.onDrag,
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.headlineMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      subtitle,
+                      style: TextStyle(color: p.muted, height: 1.4),
+                    ),
+                    const SizedBox(height: 20),
+                    body,
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        _error!,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+                child: action,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -317,91 +324,94 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Scaffold(
       backgroundColor: p.hero,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 40, 28, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: ListView(
-                  children: [
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        width: 64,
-                        height: 64,
-                        decoration: BoxDecoration(
-                          color: p.heroAccent,
-                          borderRadius: BorderRadius.circular(20),
+        child: MaxWidth(
+          maxWidth: 560,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(28, 40, 28, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: ListView(
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          width: 64,
+                          height: 64,
+                          decoration: BoxDecoration(
+                            color: p.heroAccent,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Icon(Icons.eco, color: p.hero, size: 34),
                         ),
-                        child: Icon(Icons.eco, color: p.hero, size: 34),
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                    Text(
-                      'BASIC HEALTH TRACKER',
-                      style: TextStyle(
-                        color: p.heroAccent,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
+                      const SizedBox(height: 28),
+                      Text(
+                        'BASIC HEALTH TRACKER',
+                        style: TextStyle(
+                          color: p.heroAccent,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Eat well, without the busywork.',
-                      style: TextStyle(
-                        color: p.onHero,
-                        fontSize: 36,
-                        height: 1.1,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.8,
+                      const SizedBox(height: 8),
+                      Text(
+                        'Eat well, without the busywork.',
+                        style: TextStyle(
+                          color: p.onHero,
+                          fontSize: 36,
+                          height: 1.1,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.8,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Keep track of calories, macros and weight so you can '
-                      'focus on the food.',
-                      style: TextStyle(
-                        color: p.onHeroMuted,
-                        fontSize: 16,
-                        height: 1.5,
+                      const SizedBox(height: 12),
+                      Text(
+                        'Keep track of calories, macros and weight so you can '
+                        'focus on the food.',
+                        style: TextStyle(
+                          color: p.onHeroMuted,
+                          fontSize: 16,
+                          height: 1.5,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 28),
-                    point(
-                      Icons.auto_awesome,
-                      'Just describe your meal',
-                      'AI works out the calories and macros for you.',
-                    ),
-                    point(
-                      Icons.history,
-                      'One tap for the usual',
-                      'Foods you log are saved, so repeats take a second.',
-                    ),
-                    point(
-                      Icons.local_fire_department_outlined,
-                      'Activity counts',
-                      'Calories burned sync from Apple Health or Health '
-                          'Connect.',
-                    ),
-                  ],
+                      const SizedBox(height: 28),
+                      point(
+                        Icons.auto_awesome,
+                        'Just describe your meal',
+                        'AI works out the calories and macros for you.',
+                      ),
+                      point(
+                        Icons.history,
+                        'One tap for the usual',
+                        'Foods you log are saved, so repeats take a second.',
+                      ),
+                      point(
+                        Icons.local_fire_department_outlined,
+                        'Activity counts',
+                        'Calories burned sync from Apple Health or Health '
+                            'Connect.',
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: p.heroAccent,
-                  foregroundColor: p.hero,
-                  minimumSize: const Size(48, 56),
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: p.heroAccent,
+                    foregroundColor: p.hero,
+                    minimumSize: const Size(48, 56),
+                  ),
+                  onPressed: () => setState(() => _step = 1),
+                  child: const Text('Get started'),
                 ),
-                onPressed: () => setState(() => _step = 1),
-                child: const Text('Get started'),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: p.onHeroMuted),
-                onPressed: _skip,
-                child: const Text('Skip for now'),
-              ),
-            ],
+                TextButton(
+                  style: TextButton.styleFrom(foregroundColor: p.onHeroMuted),
+                  onPressed: _skip,
+                  child: const Text('Skip for now'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

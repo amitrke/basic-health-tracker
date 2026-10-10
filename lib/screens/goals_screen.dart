@@ -5,6 +5,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 
 /// Edit the daily calorie budget, macro goals and weight goal. Every change
 /// saves straight away.
@@ -91,9 +92,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
         prefs.proteinGoal * 4 + prefs.carbsGoal * 4 + prefs.fatGoal * 9;
     return Scaffold(
       appBar: AppBar(title: const Text('Goals')),
-      body: ListView(
+      body: CenteredListView(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+        top: 0,
+        bottom: 32,
         children: [
           CalorieStepper(
             units: units,

@@ -8,6 +8,7 @@ import '../services/user_prefs.dart';
 import '../theme.dart';
 import '../util/units.dart';
 import '../widgets/common.dart';
+import '../widgets/responsive.dart';
 import 'food_editor.dart';
 
 /// Everything eaten on one day, by meal. Any past day can be picked.
@@ -107,8 +108,9 @@ class _LogScreenState extends State<LogScreen> {
                   entries.isEmpty) {
                 return const Center(child: CircularProgressIndicator());
               }
-              return ListView(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+              return CenteredListView(
+                top: 4,
+                bottom: 96,
                 children: [
                   _WeekStrip(day: _day, onPick: _setDay),
                   const SizedBox(height: 12),
