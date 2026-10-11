@@ -7,12 +7,17 @@ import 'screens/today_screen.dart';
 import 'screens/trends_screen.dart';
 import 'screens/weight_screen.dart';
 import 'services/services.dart';
+import 'sync/sync_controller.dart';
 import 'theme.dart';
 import 'widgets/responsive.dart';
 
 void main() {
+  final database = AppDatabase();
   runApp(
-    BasicHealthTrackerApp(database: AppDatabase(), services: AppServices()),
+    BasicHealthTrackerApp(
+      database: database,
+      services: AppServices(sync: SyncController.forPlatform(database)),
+    ),
   );
 }
 
@@ -30,11 +35,26 @@ class BasicHealthTrackerApp extends StatefulWidget {
   State<BasicHealthTrackerApp> createState() => _BasicHealthTrackerAppState();
 }
 
-class _BasicHealthTrackerAppState extends State<BasicHealthTrackerApp> {
+class _BasicHealthTrackerAppState extends State<BasicHealthTrackerApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
     widget.services.prefs.load();
+    widget.services.sync?.load();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Pick up what the other device logged while this one was in a pocket.
+    if (state == AppLifecycleState.resumed) widget.services.sync?.syncNow();
   }
 
   @override

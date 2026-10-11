@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'ai_estimator.dart';
 import 'ai_settings.dart';
 import 'health_service.dart';
+import '../sync/sync_controller.dart';
 import 'open_food_facts.dart';
 import 'user_prefs.dart';
 
@@ -58,6 +59,7 @@ class AppServices {
     HealthSource? health,
     HealthPrefsStore? healthPrefs,
     UserPrefsStore? userPrefs,
+    this.sync,
   }) : settingsStore = settingsStore ?? SecureAiSettingsStore(),
        client = client ?? http.Client(),
        health = health ?? PlatformHealthSource(),
@@ -68,6 +70,9 @@ class AppServices {
   final http.Client client;
   final HealthSource health;
   final HealthPrefsStore healthPrefs;
+
+  /// Cloud sync between devices; null where this platform has none.
+  final SyncController? sync;
 
   /// Goals, units and onboarding state; [PrefsController.load] it once.
   final PrefsController prefs;

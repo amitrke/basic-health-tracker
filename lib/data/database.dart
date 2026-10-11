@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:drift/drift.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 
@@ -7,11 +9,31 @@ part 'database.g.dart';
 
 enum MealType { breakfast, lunch, dinner, snack }
 
+final _random = Random.secure();
+
+/// A random v4 UUID. Rows carry one so devices can tell them apart when
+/// syncing, which the per-device integer ids cannot.
+String newUuid() {
+  final b = List<int>.generate(16, (_) => _random.nextInt(256));
+  b[6] = (b[6] & 0x0f) | 0x40;
+  b[8] = (b[8] & 0x3f) | 0x80;
+  final h = b.map((x) => x.toRadixString(16).padLeft(2, '0')).join();
+  return '${h.substring(0, 8)}-${h.substring(8, 12)}-${h.substring(12, 16)}-'
+      '${h.substring(16, 20)}-${h.substring(20)}';
+}
+
+/// Columns every synced table carries. [updatedAt] is bumped by a trigger on
+/// any change (see `_createSyncSchema`), so no write path has to remember to.
+mixin SyncColumns on Table {
+  TextColumn get uuid => text().clientDefault(newUuid)();
+  DateTimeColumn get updatedAt => dateTime().clientDefault(DateTime.now)();
+}
+
 /// How much of a food was eaten. Scales saved calories, or stands in for a
 /// number entirely when none is known (see `resolveCalories`).
 enum Portion { small, normal, large }
 
-class FoodEntries extends Table {
+class FoodEntries extends Table with SyncColumns {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 200)();
   IntColumn get mealType => intEnum<MealType>()();
@@ -31,7 +53,7 @@ class FoodEntries extends Table {
 
 /// Foods the user has logged before. Calories are for a normal portion and are
 /// entered once, then reused by every later one-tap log.
-class SavedFoods extends Table {
+class SavedFoods extends Table with SyncColumns {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 200).unique()();
   IntColumn get calories => integer().nullable()();
@@ -47,7 +69,7 @@ class SavedFoods extends Table {
   IntColumn get fat => integer().nullable()();
 }
 
-class MealTemplates extends Table {
+class MealTemplates extends Table with SyncColumns {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 100).unique()();
   IntColumn get mealType => intEnum<MealType>()();
@@ -65,10 +87,21 @@ class TemplateItems extends Table {
 
 /// Weigh-ins entered in the app. Readings from Health are not copied here;
 /// the weight screen merges them in when Health is on.
-class WeightEntries extends Table {
+class WeightEntries extends Table with SyncColumns {
   IntColumn get id => integer().autoIncrement()();
   DateTimeColumn get measuredAt => dateTime()();
   RealColumn get kg => real()();
+}
+
+/// Rows deleted here, kept so a delete propagates to other devices instead of
+/// the row being re-created from their copy.
+class SyncTombstones extends Table {
+  TextColumn get uuid => text()();
+  TextColumn get kind => text()();
+  DateTimeColumn get deletedAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {uuid};
 }
 
 @DriftDatabase(
@@ -78,6 +111,7 @@ class WeightEntries extends Table {
     MealTemplates,
     TemplateItems,
     WeightEntries,
+    SyncTombstones,
   ],
 )
 class AppDatabase extends _$AppDatabase {
@@ -85,7 +119,7 @@ class AppDatabase extends _$AppDatabase {
     : super(executor ?? driftDatabase(name: 'wellbite'));
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -101,6 +135,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(foodEntries, foodEntries.carbs);
         await m.addColumn(foodEntries, foodEntries.fat);
       }
+      // Before anything reads food_entries through the generated classes,
+      // which expect every current column.
+      await _addSyncColumns(m);
       if (from < 2) {
         // Created from the current schema, so they already have macros.
         await m.createTable(savedFoods);
@@ -117,7 +154,64 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 3) await m.createTable(weightEntries);
     },
+    beforeOpen: (details) async => _createSyncSchema(),
   );
+
+  /// Tables whose rows sync, by SQL name.
+  static const syncedTables = [
+    'food_entries',
+    'saved_foods',
+    'meal_templates',
+    'weight_entries',
+  ];
+
+  /// Gives existing rows an id and timestamp. Tables that do not exist yet
+  /// are created later from the current schema, which has the columns.
+  Future<void> _addSyncColumns(Migrator m) async {
+    final hasTombstones = await customSelect(
+      "SELECT 1 FROM sqlite_master WHERE name = 'sync_tombstones'",
+    ).get();
+    if (hasTombstones.isEmpty) await m.createTable(syncTombstones);
+    for (final table in syncedTables) {
+      final columns = await customSelect(
+        'PRAGMA table_info($table)',
+      ).map((r) => r.read<String>('name')).get();
+      if (columns.isEmpty || columns.contains('uuid')) continue;
+      await customStatement(
+        "ALTER TABLE $table ADD COLUMN uuid TEXT NOT NULL DEFAULT ''",
+      );
+      await customStatement(
+        'ALTER TABLE $table ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0',
+      );
+      await customStatement(
+        'UPDATE $table SET uuid = lower(hex(randomblob(16))), '
+        "updated_at = CAST(strftime('%s','now') AS INTEGER)",
+      );
+    }
+  }
+
+  /// Indexes and triggers that keep sync metadata correct no matter which
+  /// code path wrote the row. Idempotent, so it runs on every open.
+  Future<void> _createSyncSchema() async {
+    const now = "CAST(strftime('%s','now') AS INTEGER)";
+    for (final t in syncedTables) {
+      await customStatement(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_${t}_uuid ON $t(uuid)',
+      );
+      // A write that left updated_at alone is a local edit: stamp it. Writes
+      // from sync set updated_at themselves, so they are left as they are.
+      await customStatement(
+        'CREATE TRIGGER IF NOT EXISTS sync_touch_$t AFTER UPDATE ON $t '
+        'WHEN NEW.updated_at = OLD.updated_at BEGIN '
+        'UPDATE $t SET updated_at = $now WHERE id = NEW.id; END',
+      );
+      await customStatement(
+        'CREATE TRIGGER IF NOT EXISTS sync_tomb_$t AFTER DELETE ON $t BEGIN '
+        'INSERT OR REPLACE INTO sync_tombstones(uuid, kind, deleted_at) '
+        "VALUES (OLD.uuid, '$t', $now); END",
+      );
+    }
+  }
 
   /// Seeds the saved-food list from everything already logged, so quick-add
   /// is useful immediately after upgrading.
