@@ -306,6 +306,20 @@ jobs:
           /usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleVersion' \
             "$RUNNER_TEMP/Runner.xcarchive/Info.plist"
 
+      # An unsigned archive carries no entitlements, and export only re-signs
+      # with what the archive already has plus the profile's defaults, so iCloud
+      # and HealthKit were silently dropped from TestFlight builds. Ad-hoc
+      # signing the app with Runner.entitlements first (xcodebuild refuses ad-hoc
+      # for device SDKs, codesign does not) puts them back; export then replaces
+      # this signature with the distribution one and keeps the entitlements.
+      - name: Put the entitlements back
+        if: env.HAS_ASC_KEY == 'true'
+        run: |
+          app="$RUNNER_TEMP/Runner.xcarchive/Products/Applications/Runner.app"
+          codesign --force --sign - --timestamp=none \
+            --entitlements ios/Runner/Runner.entitlements "$app"
+          codesign -d --entitlements - "$app" 2>&1 | grep -q icloud-container-identifiers
+
       # ios/ExportOptions.plist sets destination=upload, so this both signs for
       # distribution and sends the build; its exit status is the result.
       # Cloud-managed signing needs the API key to have the Admin role.
